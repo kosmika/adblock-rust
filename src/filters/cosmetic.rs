@@ -224,16 +224,14 @@ impl CosmeticFilter {
 
         let mut any_unsupported = false;
         for (location_type, location) in Self::locations_before_sharp(line, sharp_index) {
-            let mut hostname = String::new();
-            if location.is_ascii() {
-                hostname.push_str(location);
+            let hash = if location.is_ascii() {
+                crate::utils::fast_hash(location)
             } else {
                 match idna::domain_to_ascii(location) {
-                    Ok(x) if !x.is_empty() => hostname.push_str(&x),
+                    Ok(x) if !x.is_empty() => crate::utils::fast_hash(&x),
                     _ => return Err(CosmeticFilterError::PunycodeError),
                 }
-            }
-            let hash = crate::utils::fast_hash(&hostname);
+            };
             match location_type {
                 CosmeticFilterLocationType::NotEntity => not_entities_vec.push(hash),
                 CosmeticFilterLocationType::NotHostname => not_hostnames_vec.push(hash),
