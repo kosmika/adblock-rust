@@ -19,7 +19,6 @@ table NetworkFilter {
   modifier_option: string;
   hostname: string;
 
-  tag: string;
 
   raw_line: string;
 }

@@ -90,7 +90,7 @@ impl<'a> FlatNetworkFilter<'a> {
 
     #[inline(always)]
     pub fn tag(&self) -> Option<&'a str> {
-        self.fb_filter.tag()
+        None
     }
 
     #[inline(always)]

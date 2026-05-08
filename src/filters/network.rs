@@ -457,7 +457,6 @@ impl NetworkFilter {
         let mut opt_not_domains: Option<Vec<Hash>> = None;
 
         let mut modifier_option: Option<String> = None;
-        let mut tag: Option<String> = None;
 
         if parsed.exception {
             mask.set(NetworkFilterMask::IS_EXCEPTION, true);
@@ -517,7 +516,7 @@ impl NetworkFilter {
                     | NetworkFilterOption::FirstParty(false) => {
                         mask.set(NetworkFilterMask::FIRST_PARTY, false)
                     }
-                    NetworkFilterOption::Tag(value) => tag = Some(value),
+                    NetworkFilterOption::Tag(value) => {}
                     NetworkFilterOption::Redirect(value) => {
                         mask.set(NetworkFilterMask::IS_REDIRECT, true);
                         mask.set(NetworkFilterMask::ALSO_BLOCK_REDIRECT, true);
@@ -810,7 +809,7 @@ impl NetworkFilter {
             mask,
             opt_domains,
             opt_not_domains,
-            tag,
+            tag: None,
             raw_line: if debug {
                 Some(Box::new(String::from(line)))
             } else {

@@ -41,8 +41,7 @@ pub mod fb {
         pub const VT_PATTERNS: flatbuffers::VOffsetT = 10;
         pub const VT_MODIFIER_OPTION: flatbuffers::VOffsetT = 12;
         pub const VT_HOSTNAME: flatbuffers::VOffsetT = 14;
-        pub const VT_TAG: flatbuffers::VOffsetT = 16;
-        pub const VT_RAW_LINE: flatbuffers::VOffsetT = 18;
+        pub const VT_RAW_LINE: flatbuffers::VOffsetT = 16;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -61,9 +60,6 @@ pub mod fb {
             let mut builder = NetworkFilterBuilder::new(_fbb);
             if let Some(x) = args.raw_line {
                 builder.add_raw_line(x);
-            }
-            if let Some(x) = args.tag {
-                builder.add_tag(x);
             }
             if let Some(x) = args.hostname {
                 builder.add_hostname(x);
@@ -93,7 +89,6 @@ pub mod fb {
                 .map(|x| x.iter().map(|s| s.to_string()).collect());
             let modifier_option = self.modifier_option().map(|x| x.to_string());
             let hostname = self.hostname().map(|x| x.to_string());
-            let tag = self.tag().map(|x| x.to_string());
             let raw_line = self.raw_line().map(|x| x.to_string());
             NetworkFilterT {
                 mask,
@@ -102,7 +97,6 @@ pub mod fb {
                 patterns,
                 modifier_option,
                 hostname,
-                tag,
                 raw_line,
             }
         }
@@ -183,16 +177,6 @@ pub mod fb {
             }
         }
         #[inline]
-        pub fn tag(&self) -> Option<&'a str> {
-            // Safety:
-            // Created from valid Table for this object
-            // which contains a valid value in this slot
-            unsafe {
-                self._tab
-                    .get::<flatbuffers::ForwardsUOffset<&str>>(NetworkFilter::VT_TAG, None)
-            }
-        }
-        #[inline]
         pub fn raw_line(&self) -> Option<&'a str> {
             // Safety:
             // Created from valid Table for this object
@@ -236,7 +220,6 @@ pub mod fb {
                     Self::VT_HOSTNAME,
                     false,
                 )?
-                .visit_field::<flatbuffers::ForwardsUOffset<&str>>("tag", Self::VT_TAG, false)?
                 .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
                     "raw_line",
                     Self::VT_RAW_LINE,
@@ -255,7 +238,6 @@ pub mod fb {
         >,
         pub modifier_option: Option<flatbuffers::WIPOffset<&'a str>>,
         pub hostname: Option<flatbuffers::WIPOffset<&'a str>>,
-        pub tag: Option<flatbuffers::WIPOffset<&'a str>>,
         pub raw_line: Option<flatbuffers::WIPOffset<&'a str>>,
     }
     impl<'a> Default for NetworkFilterArgs<'a> {
@@ -268,7 +250,6 @@ pub mod fb {
                 patterns: None,
                 modifier_option: None,
                 hostname: None,
-                tag: None,
                 raw_line: None,
             }
         }
@@ -330,11 +311,6 @@ pub mod fb {
             );
         }
         #[inline]
-        pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b str>) {
-            self.fbb_
-                .push_slot_always::<flatbuffers::WIPOffset<_>>(NetworkFilter::VT_TAG, tag);
-        }
-        #[inline]
         pub fn add_raw_line(&mut self, raw_line: flatbuffers::WIPOffset<&'b str>) {
             self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
                 NetworkFilter::VT_RAW_LINE,
@@ -367,7 +343,6 @@ pub mod fb {
             ds.field("patterns", &self.patterns());
             ds.field("modifier_option", &self.modifier_option());
             ds.field("hostname", &self.hostname());
-            ds.field("tag", &self.tag());
             ds.field("raw_line", &self.raw_line());
             ds.finish()
         }
@@ -381,7 +356,6 @@ pub mod fb {
         pub patterns: Option<Vec<String>>,
         pub modifier_option: Option<String>,
         pub hostname: Option<String>,
-        pub tag: Option<String>,
         pub raw_line: Option<String>,
     }
     impl Default for NetworkFilterT {
@@ -393,7 +367,6 @@ pub mod fb {
                 patterns: None,
                 modifier_option: None,
                 hostname: None,
-                tag: None,
                 raw_line: None,
             }
         }
@@ -412,7 +385,6 @@ pub mod fb {
             });
             let modifier_option = self.modifier_option.as_ref().map(|x| _fbb.create_string(x));
             let hostname = self.hostname.as_ref().map(|x| _fbb.create_string(x));
-            let tag = self.tag.as_ref().map(|x| _fbb.create_string(x));
             let raw_line = self.raw_line.as_ref().map(|x| _fbb.create_string(x));
             NetworkFilter::create(
                 _fbb,
@@ -423,7 +395,6 @@ pub mod fb {
                     patterns,
                     modifier_option,
                     hostname,
-                    tag,
                     raw_line,
                 },
             )

@@ -76,10 +76,10 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for &NetworkFilter {
             .as_ref()
             .map(|s| builder.create_string(s));
 
-        let tag = network_filter
-            .tag
-            .as_ref()
-            .map(|s| builder.create_string(s));
+        // let tag = network_filter
+        //     .tag
+        //     .as_ref()
+        //     .map(|s| builder.create_string(s));
 
         let patterns = if network_filter.filter.iter().len() > 0 {
             let offsets: Vec<WIPOffset<&str>> = network_filter
@@ -106,7 +106,6 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for &NetworkFilter {
                 opt_domains,
                 opt_not_domains,
                 hostname,
-                tag,
                 raw_line,
             },
         );
