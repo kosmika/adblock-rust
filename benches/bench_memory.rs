@@ -158,7 +158,7 @@ fn bench_memory_usage(c: &mut Criterion) {
                 if run_requests {
                     ALLOCATOR.reset();
                     for request in first_1000_requests.clone() {
-                        criterion::black_box(engine.check_network_request(&request.into()));
+                        std::hint::black_box(engine.check_network_request(&request.into()));
                     }
                 }
 
@@ -166,7 +166,7 @@ fn bench_memory_usage(c: &mut Criterion) {
                 result += metric() + noise;
 
                 // Prevent engine from being optimized
-                criterion::black_box(&engine);
+                std::hint::black_box(&engine);
             }
 
             // Return the memory usage as a Duration
