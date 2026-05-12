@@ -895,4 +895,26 @@ trustedSetLocalStorageItem("mol.ads.cmp.tcf.cache", "{\"getTCData\":{\"cmpId\":2
             ""
         );
     }
+
+    /// Guards the FlatBuffers `mask` field default against drifting out of sync
+    /// with the actual most-common mask value.
+    /// This could affect the memory usage.
+    #[test]
+    fn mask_fb_default_matches_most_common_flags() {
+        use crate::filters::flatbuffer_generated::fb::NetworkFilter as FbNetworkFilter;
+        use crate::filters::network::NetworkFilterMask;
+
+        let expected = NetworkFilterMask::DEFAULT_OPTIONS.bits()
+            | NetworkFilterMask::IS_HOSTNAME_ANCHOR.bits()
+            | NetworkFilterMask::IS_RIGHT_ANCHOR.bits()
+            | NetworkFilterMask::FROM_DOCUMENT.bits();
+
+        let mut fbb = flatbuffers::FlatBufferBuilder::new();
+        let filter = FbNetworkFilter::create(&mut fbb, &Default::default());
+        fbb.finish(filter, None);
+        let buf = fbb.finished_data();
+        let fb_filter = flatbuffers::root::<FbNetworkFilter>(buf).unwrap();
+
+        assert_eq!(fb_filter.mask(), expected);
+    }
 }
