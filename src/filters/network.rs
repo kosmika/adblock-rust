@@ -879,14 +879,13 @@ impl NetworkFilter {
 
         // Get tokens from filter
         match &self.filter {
-            FilterPart::Simple(f)
-                if !self.is_complete_regex() => {
-                    let skip_last_token =
-                        (self.is_plain() || self.is_regex()) && !self.is_right_anchor();
-                    let skip_first_token = self.is_right_anchor();
+            FilterPart::Simple(f) if !self.is_complete_regex() => {
+                let skip_last_token =
+                    (self.is_plain() || self.is_regex()) && !self.is_right_anchor();
+                let skip_first_token = self.is_right_anchor();
 
-                    utils::tokenize_filter_to(f, skip_first_token, skip_last_token, tokens_buffer);
-                }
+                utils::tokenize_filter_to(f, skip_first_token, skip_last_token, tokens_buffer);
+            }
             FilterPart::AnyOf(_) => (), // across AnyOf set of filters no single token is guaranteed to match to a request
             _ => (),
         }
