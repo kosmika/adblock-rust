@@ -858,10 +858,7 @@ impl NetworkFilter {
         )
     }
 
-    pub(crate) fn get_tokens(
-        &self,
-        tokens_buffer: &mut TokensBuffer,
-    ) -> FilterTokens {
+    pub(crate) fn get_tokens(&self, tokens_buffer: &mut TokensBuffer) -> FilterTokens {
         tokens_buffer.clear();
 
         // If there is only one domain and no domain negation, we also use this
