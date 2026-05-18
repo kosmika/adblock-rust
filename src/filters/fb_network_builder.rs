@@ -39,11 +39,11 @@ pub(crate) struct NetworkRulesBuilder {
     lists: Vec<NetworkFilterListBuilder>,
 }
 
-impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for &NetworkFilter {
+impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilter {
     type Output = WIPOffset<fb::NetworkFilter<'a>>;
 
     fn serialize(
-        network_filter: &NetworkFilter,
+        network_filter: NetworkFilter,
         builder: &mut EngineFlatBuilder<'a>,
     ) -> WIPOffset<fb::NetworkFilter<'a>> {
         let opt_domains = network_filter.opt_domains.as_ref().map(|v| {
@@ -139,43 +139,51 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilterListBuilder {
 
         {
             for network_filter in rule_list.filters {
-                let flat_filter = if !rule_list.optimize
+                let multi_tokens = network_filter.get_tokens(&mut tokens_buffer);
+
+                // Resolve the target token(s) and record frequencies up-front,
+                // so the serialized/optimizable branches share no token logic.
+                let mut single_token: Hash = 0;
+                let tokens: &[Hash] = match multi_tokens {
+                    FilterTokens::Empty => std::slice::from_ref(&single_token),
+                    FilterTokens::OptDomains => {
+                        let slice = tokens_buffer.as_slice();
+                        for &t in slice {
+                            token_frequencies.record_usage(t);
+                        }
+                        slice
+                    }
+                    FilterTokens::Other => {
+                        single_token = token_frequencies
+                            .select_least_used_token(tokens_buffer.as_slice());
+                        token_frequencies.record_usage(single_token);
+                        std::slice::from_ref(&single_token)
+                    }
+                };
+
+                if !rule_list.optimize
                     || !optimizer::is_filter_optimizable_by_patterns(&network_filter)
                 {
-                    Some(FlatSerialize::serialize(&network_filter, builder))
+                    // Serialized path: consume network_filter (no clone needed).
+                    let flat_filter = FlatSerialize::serialize(network_filter, builder);
+                    for &token in tokens {
+                        filter_map_builder.insert(to_short_hash(token), flat_filter);
+                    }
                 } else {
-                    None
-                };
-
-                let mut store_filter = |token: Hash| {
-                    let short_token = to_short_hash(token);
-                    if let Some(flat_filter) = flat_filter {
-                        filter_map_builder.insert(short_token, flat_filter);
-                    } else {
-                        optimizable
-                            .entry(short_token)
-                            .or_default()
-                            .push(network_filter.clone());
-                    }
-                };
-
-                let multi_tokens = network_filter.get_tokens(&mut tokens_buffer);
-                match multi_tokens {
-                    FilterTokens::Empty => {
-                        // No tokens, add to fallback bucket (token 0)
-                        store_filter(0);
-                    }
-                    FilterTokens::OptDomains(opt_domains) => {
-                        // For OptDomains, each domain is treated as a separate token group
-                        for &token in opt_domains.iter() {
-                            store_filter(token);
-                            token_frequencies.record_usage(token);
+                    // Optimizable path: keep network_filter for deferred optimization.
+                    // Clone is only needed in the OptDomains case where the same filter
+                    // maps to multiple token buckets.
+                    if let Some((last, rest)) = tokens.split_last() {
+                        for &token in rest {
+                            optimizable
+                                .entry(to_short_hash(token))
+                                .or_default()
+                                .push(network_filter.clone());
                         }
-                    }
-                    FilterTokens::Other(tokens) => {
-                        let best_token = token_frequencies.select_least_used_token(tokens);
-                        token_frequencies.record_usage(best_token);
-                        store_filter(best_token);
+                        optimizable
+                            .entry(to_short_hash(*last))
+                            .or_default()
+                            .push(network_filter);
                     }
                 }
             }
@@ -190,7 +198,7 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilterListBuilder {
                 let optimized = optimizer::optimize(v);
 
                 for filter in optimized {
-                    let flat_filter = FlatSerialize::serialize(&filter, builder);
+                    let flat_filter = FlatSerialize::serialize(filter, builder);
                     filter_map_builder.insert(token, flat_filter);
                 }
             }
