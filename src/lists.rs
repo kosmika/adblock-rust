@@ -197,6 +197,7 @@ impl FilterListMetadata {
     /// Attempts to add a line of a filter list to this collection of metadata. Only comment lines
     /// with valid metadata content will be added. Previously added information will not be
     /// rewritten.
+    #[cfg(test)]
     fn try_add(&mut self, line: &str) {
         if let Some(kv) = line.strip_prefix("! ") {
             if let Some((key, value)) = kv.split_once(": ") {
@@ -569,34 +570,17 @@ pub fn parse_filters(
     debug: bool,
     opts: ParseOptions,
 ) -> (Vec<NetworkFilter>, Vec<CosmeticFilter>) {
-    let (_metadata, network_filters, cosmetic_filters) =
-        parse_filters_with_metadata(list, debug, opts);
-
-    (network_filters, cosmetic_filters)
-}
-
-/// Parse an entire list of filters, ignoring any errors
-pub fn parse_filters_with_metadata(
-    list: impl IntoIterator<Item = impl AsRef<str>>,
-    debug: bool,
-    opts: ParseOptions,
-) -> (FilterListMetadata, Vec<NetworkFilter>, Vec<CosmeticFilter>) {
-    let mut metadata = FilterListMetadata::default();
-
     let list_iter = list.into_iter();
 
     let (network_filters, cosmetic_filters): (Vec<_>, Vec<_>) = list_iter
-        .map(|line| {
-            metadata.try_add(line.as_ref());
-            parse_filter(line.as_ref(), debug, opts)
-        })
+        .map(|line| parse_filter(line.as_ref(), debug, opts))
         .filter_map(Result::ok)
         .partition_map(|filter| match filter {
             ParsedFilter::Network(f) => Either::Left(f),
             ParsedFilter::Cosmetic(f) => Either::Right(f),
         });
 
-    (metadata, network_filters, cosmetic_filters)
+    (network_filters, cosmetic_filters)
 }
 
 /// Given a single line, checks if this would likely be a cosmetic filter, a

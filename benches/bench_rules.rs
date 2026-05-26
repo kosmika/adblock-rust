@@ -79,10 +79,7 @@ fn list_parse(c: &mut Criterion) {
 }
 
 fn get_engine(rules: impl IntoIterator<Item = impl AsRef<str>>) -> Engine {
-    let (network_filters, cosmetic_filters) =
-        adblock::lists::parse_filters(rules, false, Default::default());
-
-    Engine::new_with_parsed_rules(network_filters, cosmetic_filters)
+    Engine::from_rules(rules, Default::default())
 }
 
 fn blocker_new(c: &mut Criterion) {
