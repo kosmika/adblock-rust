@@ -72,51 +72,64 @@ impl Default for Engine {
 
 impl Engine {
     /// Loads rules in a single format, enabling optimizations and discarding debug information.
+    #[deprecated(since = "0.13.0", note = "Use `from_text` instead")]
     pub fn from_rules(
         rules: impl IntoIterator<Item = impl AsRef<str>>,
         opts: ParseOptions,
     ) -> Self {
-        Self::from_rules_parametrised(rules, opts, false, true)
+        let text = rules.into_iter().fold(String::new(), |mut acc, rule| {
+            acc.push_str(rule.as_ref());
+            acc.push('\n');
+            acc
+        });
+        Self::from_text_parametrised(text, opts, false, true)
     }
 
     /// Loads rules, enabling optimizations and including debug information.
+    #[deprecated(since = "0.13.0", note = "Use `from_text` instead")]
     pub fn from_rules_debug(
         rules: impl IntoIterator<Item = impl AsRef<str>>,
         opts: ParseOptions,
     ) -> Self {
-        Self::from_rules_parametrised(rules, opts, true, true)
+        let text = rules.into_iter().fold(String::new(), |mut acc, rule| {
+            acc.push_str(rule.as_ref());
+            acc.push('\n');
+            acc
+        });
+        Self::from_text_parametrised(text, opts, true, true)
     }
 
-    // TODO: add deprecation warning
-    // #[deprecated(since = "0.1.0", note = "Use `from_filter_set` instead")]
+    #[deprecated(since = "0.13.0", note = "Use `from_text_parametrised` instead")]
     pub fn from_rules_parametrised(
         filter_rules: impl IntoIterator<Item = impl AsRef<str>>,
         opts: ParseOptions,
         debug: bool,
         optimize: bool,
     ) -> Self {
-        let mut lines = String::new();
-        for rule in filter_rules {
-            lines.push_str(rule.as_ref());
-            lines.push('\n');
-        }
+        let text = filter_rules
+            .into_iter()
+            .fold(String::new(), |mut acc, rule| {
+                acc.push_str(rule.as_ref());
+                acc.push('\n');
+                acc
+            });
         let mut filter_set = FilterSet::new(debug);
-        filter_set.add_filter_list(lines, opts);
+        filter_set.add_filter_list(text, opts);
         Self::from_filter_set(filter_set, optimize)
     }
 
-    pub fn from_text(text: String, opts: ParseOptions) -> Self {
-        Self::from_text_parametrised(text, opts, false, true)
+    pub fn from_text(text: impl Into<String>, opts: ParseOptions) -> Self {
+        Self::from_text_parametrised(text.into(), opts, false, true)
     }
 
     pub fn from_text_parametrised(
-        text: String,
+        text: impl Into<String>,
         opts: ParseOptions,
         debug: bool,
         optimize: bool,
     ) -> Self {
         let mut filter_set = FilterSet::new(debug);
-        filter_set.add_filter_list(text, opts);
+        filter_set.add_filter_list(text.into(), opts);
         Self::from_filter_set(filter_set, optimize)
     }
 

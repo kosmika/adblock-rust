@@ -74,7 +74,7 @@ fn get_blocker_engine_default(extra_rules: impl IntoIterator<Item = impl AsRef<s
 fn check_specific_rules() {
     {
         // exceptions have not effect if important filter matches
-        let engine = Engine::from_rules_debug(["||www.facebook.com/*/plugin"], Default::default());
+        let engine = Engine::from_text("||www.facebook.com/*/plugin", Default::default());
 
         let request =
             Request::new("https://www.facebook.com/v3.2/plugins/comments.ph", "", "").unwrap();
@@ -88,10 +88,8 @@ fn check_specific_rules() {
         use std::path::Path;
 
         // exceptions have no effect if important filter matches
-        let mut engine = Engine::from_rules_debug(
-            [
-                "||cdn.taboola.com/libtrc/*/loader.js$script,redirect=noopjs,important,domain=cnet.com",
-            ],
+        let mut engine = Engine::from_text(
+            "||cdn.taboola.com/libtrc/*/loader.js$script,redirect=noopjs,important,domain=cnet.com",
             Default::default(),
         );
         let resources = adblock::resources::resource_assembler::assemble_web_accessible_resources(
