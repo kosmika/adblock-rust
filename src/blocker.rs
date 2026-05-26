@@ -453,14 +453,14 @@ impl Blocker {
 
     #[cfg(test)]
     pub fn new(
-        network_filters: Vec<crate::filters::network::NetworkFilter>,
+        network_filters: impl IntoIterator<Item = impl AsRef<str>>,
         options: &BlockerOptions,
     ) -> Self {
         use crate::engine::Engine;
         use crate::FilterSet;
 
         let mut filter_set = FilterSet::new(true);
-        filter_set.network_filters = network_filters;
+        filter_set.add_filters(network_filters, Default::default());
         let engine = Engine::from_filter_set(filter_set, options.enable_optimizations);
         Self::from_context(engine.filter_data_context())
     }

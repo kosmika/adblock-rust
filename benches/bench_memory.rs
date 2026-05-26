@@ -237,7 +237,7 @@ impl criterion::measurement::ValueFormatter for MemoryFormatter {
 }
 
 fn bench_cb(run_requests: &[&TestRequest], b: &mut Bencher<MemoryAllocated>) {
-    b.iter(|| {
+    let single_run = || {
         ALLOCATOR.reset();
         let rules = rules_from_lists(&["data/brave/brave-main-list.txt"]);
         let mut engine = Engine::from_rules(rules, Default::default());
@@ -257,6 +257,14 @@ fn bench_cb(run_requests: &[&TestRequest], b: &mut Bencher<MemoryAllocated>) {
         std::hint::black_box(&engine);
 
         ALLOCATOR.freeze();
+        ALLOCATOR.current_usage()
+    };
+    b.iter_custom(|iters| {
+        let mut total = 0usize;
+        for _ in 0..iters {
+            total += single_run();
+        }
+        total
     });
 }
 

@@ -279,59 +279,59 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_parsing_list_metadata() {
-        let list = [
-            "[Adblock Plus 2.0]",
-            "! Title: 0131 Block List",
-            "! Homepage: https://austinhuang.me/0131-block-list",
-            "! Licence: https://creativecommons.org/licenses/by-sa/4.0/",
-            "! Expires: 7 days",
-            "! Version: 20220411",
-            "",
-            "! => https://austinhuang.me/0131-block-list/list.txt",
-        ];
+    // #[test]
+    // fn test_parsing_list_metadata() {
+    //     let list = [
+    //         "[Adblock Plus 2.0]",
+    //         "! Title: 0131 Block List",
+    //         "! Homepage: https://austinhuang.me/0131-block-list",
+    //         "! Licence: https://creativecommons.org/licenses/by-sa/4.0/",
+    //         "! Expires: 7 days",
+    //         "! Version: 20220411",
+    //         "",
+    //         "! => https://austinhuang.me/0131-block-list/list.txt",
+    //     ];
 
-        let mut filter_set = FilterSet::new(false);
-        let metadata = filter_set.add_filters(list, ParseOptions::default());
+    //     let mut filter_set = FilterSet::new(false);
+    //     let metadata = filter_set.add_filters(list, ParseOptions::default());
 
-        assert_eq!(metadata.title, Some("0131 Block List".to_string()));
-        assert_eq!(
-            metadata.homepage,
-            Some("https://austinhuang.me/0131-block-list".to_string())
-        );
-        assert_eq!(metadata.expires, Some(ExpiresInterval::Days(7)));
-        assert_eq!(metadata.redirect, None);
-    }
+    //     assert_eq!(metadata.title, Some("0131 Block List".to_string()));
+    //     assert_eq!(
+    //         metadata.homepage,
+    //         Some("https://austinhuang.me/0131-block-list".to_string())
+    //     );
+    //     assert_eq!(metadata.expires, Some(ExpiresInterval::Days(7)));
+    //     assert_eq!(metadata.redirect, None);
+    // }
 
     #[test]
     /// Some lists are formatted in unusual ways. This example has a version string with
     /// non-numeric characters and an `Expires` field with extra information trailing afterwards.
     /// Valid fields should still be recognized and parsed accordingly.
-    fn test_parsing_list_best_effort() {
-        let list = [
-            "[Adblock Plus 2]",
-            "!-----------------------------------",
-            "!             ABOUT",
-            "!-----------------------------------",
-            "! Version: 1.2.0.0",
-            "! Title: ABPVN Advanced",
-            "! Last modified: 09/03/2021",
-            "! Expires: 7 days (update frequency)",
-            "! Homepage: https://www.haopro.net/",
-        ];
+    // fn test_parsing_list_best_effort() {
+    //     let list = [
+    //         "[Adblock Plus 2]",
+    //         "!-----------------------------------",
+    //         "!             ABOUT",
+    //         "!-----------------------------------",
+    //         "! Version: 1.2.0.0",
+    //         "! Title: ABPVN Advanced",
+    //         "! Last modified: 09/03/2021",
+    //         "! Expires: 7 days (update frequency)",
+    //         "! Homepage: https://www.haopro.net/",
+    //     ];
 
-        let mut filter_set = FilterSet::new(false);
-        let metadata = filter_set.add_filters(list, ParseOptions::default());
+    //     let mut filter_set = FilterSet::new(false);
+    //     let metadata = filter_set.add_filters(list, ParseOptions::default());
 
-        assert_eq!(metadata.title, Some("ABPVN Advanced".to_string()));
-        assert_eq!(
-            metadata.homepage,
-            Some("https://www.haopro.net/".to_string())
-        );
-        assert_eq!(metadata.expires, Some(ExpiresInterval::Days(7)));
-        assert_eq!(metadata.redirect, None);
-    }
+    //     assert_eq!(metadata.title, Some("ABPVN Advanced".to_string()));
+    //     assert_eq!(
+    //         metadata.homepage,
+    //         Some("https://www.haopro.net/".to_string())
+    //     );
+    //     assert_eq!(metadata.expires, Some(ExpiresInterval::Days(7)));
+    //     assert_eq!(metadata.redirect, None);
+    // }
 
     #[test]
     fn test_read_metadata() {

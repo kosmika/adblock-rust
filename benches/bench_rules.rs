@@ -1,7 +1,7 @@
 use criterion::*;
 use std::sync::LazyLock;
 
-use adblock::{Engine, FilterSet};
+use adblock::Engine;
 
 #[path = "../tests/test_utils.rs"]
 mod test_utils;
@@ -82,10 +82,7 @@ fn get_engine(rules: impl IntoIterator<Item = impl AsRef<str>>) -> Engine {
     let (network_filters, cosmetic_filters) =
         adblock::lists::parse_filters(rules, false, Default::default());
 
-    Engine::from_filter_set(
-        FilterSet::new_with_rules(network_filters, cosmetic_filters, false),
-        true,
-    )
+    Engine::new_with_parsed_rules(network_filters, cosmetic_filters)
 }
 
 fn blocker_new(c: &mut Criterion) {

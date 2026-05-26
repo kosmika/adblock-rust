@@ -138,9 +138,7 @@ impl CosmeticFilterCache {
         use crate::engine::Engine;
         use crate::FilterSet;
 
-        let mut filter_set = FilterSet::new(true);
-        filter_set.cosmetic_filters = rules;
-        let engine = Engine::from_filter_set(filter_set, true);
+        let engine = Engine::new_with_parsed_rules(vec![], rules);
         engine.cosmetic_cache()
     }
 

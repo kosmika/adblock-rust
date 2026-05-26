@@ -192,34 +192,32 @@ impl<'a> NetworkFilterListBuilder<'a> {
 }
 
 impl<'a> NetworkRulesBuilder<'a> {
-    pub fn from_rules(
-        network_filters: impl IntoIterator<Item = NetworkFilter>,
-        optimize: bool,
-        builder: &mut EngineFlatBuilder<'a>,
-    ) -> Self {
+    pub fn new(optimize: bool)
+     -> Self {
         let mut lists = vec![];
         for list_id in 0..NetworkFilterListId::Size as usize {
             // Don't optimize removeparam, since it can fuse filters without respecting distinct
             let optimize = optimize && list_id != NetworkFilterListId::RemoveParam as usize;
             lists.push(NetworkFilterListBuilder::new(optimize));
         }
-        let mut self_ = Self {
+       Self {
             lists,
             bad_filter_ids: HashSet::new(),
-        };
+        }
+      }
 
-        for filter in network_filters {
+      pub fn add_rules(&mut self, filter: NetworkFilter, builder: &mut EngineFlatBuilder<'a>) {
             // skip any bad filters
             if filter.is_badfilter() {
                 // Store the ID without the BAD_FILTER bit so it matches the
                 // corresponding normal filter that this badfilter is meant to cancel.
-                self_.bad_filter_ids.insert(filter.get_id_without_badfilter());
-                continue;
+                self.bad_filter_ids.insert(filter.get_id_without_badfilter());
+                return;
             }
 
             // Redirects are independent of blocking behavior.
             if filter.is_redirect() {
-                self_.add_filter(filter.clone(), NetworkFilterListId::Redirects, builder);
+                self.add_filter(filter.clone(), NetworkFilterListId::Redirects, builder);
             }
             type FilterId = NetworkFilterListId;
 
@@ -241,13 +239,10 @@ impl<'a> NetworkRulesBuilder<'a> {
             {
                 FilterId::Filters
             } else {
-                continue;
+                return;
             };
 
-            self_.add_filter(filter, list_id, builder);
-        }
-
-        self_
+            self.add_filter(filter, list_id, builder);
     }
 
     fn add_filter(
