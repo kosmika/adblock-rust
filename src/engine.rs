@@ -161,7 +161,7 @@ impl Engine {
                         ParsedFilter::Cosmetic(filter) => cosmetic_filters.push(filter),
                     }
                 } else {
-                    // TODO: handle error
+                    // TODO: handle error?
                 }
             }
         }
@@ -181,21 +181,6 @@ impl Engine {
             filter_data_context,
         }
     }
-
-    //   pub fn from_list_sources(list_sources: impl IntoIterator<Item = ListSource>, optimize: bool) -> Self {
-    //     let memory = make_flatbuffer(list_sources, optimize);
-
-    //     let filter_data_context = FilterDataContext::new(memory);
-
-    //     Self {
-    //         blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),
-    //         cosmetic_cache: CosmeticFilterCache::from_context(FilterDataContextRef::clone(
-    //             &filter_data_context,
-    //         )),
-    //         resources: ResourceStorage::default(),
-    //         filter_data_context,
-    //     }
-    // }
 
     /// Check if a request for a network resource from `url`, of type `request_type`, initiated by
     /// `source_url`, should be blocked.

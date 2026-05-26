@@ -34,13 +34,6 @@ fn load_requests() -> Vec<TestRequest> {
     reqs
 }
 
-fn get_engine(rules: impl IntoIterator<Item = impl AsRef<str>>) -> Engine {
-    let (network_filters, cosmetic_filters) =
-        adblock::lists::parse_filters(rules, false, Default::default());
-
-    Engine::new_with_parsed_rules(network_filters, cosmetic_filters)
-}
-
 fn bench_rule_matching(engine: &Engine, requests: &[TestRequest]) -> (u32, u32) {
     let mut matches = 0;
     let mut passes = 0;
@@ -141,7 +134,7 @@ fn rule_match_parsed_el(c: &mut Criterion) {
         .filter_map(Result::ok)
         .collect();
     let requests_len = requests_parsed.len() as u64;
-    let engine = get_engine(rules);
+    let engine = Engine::from_rules(rules, Default::default());
 
     group.throughput(Throughput::Elements(requests_len));
     group.sample_size(10);
@@ -160,7 +153,7 @@ fn rule_match_parsed_elep_slimlist(c: &mut Criterion) {
         "data/easylist.to/easylist/easylist.txt",
         "data/easylist.to/easylist/easyprivacy.txt",
     ]);
-    let engine = get_engine(full_rules);
+    let engine = Engine::from_rules(full_rules, Default::default());
 
     let requests = load_requests();
     let requests_parsed: Vec<_> = requests
@@ -171,7 +164,7 @@ fn rule_match_parsed_elep_slimlist(c: &mut Criterion) {
     let requests_len = requests_parsed.len() as u64;
 
     let slim_rules = rules_from_lists(&["data/slim-list.txt"]);
-    let slim_engine = get_engine(slim_rules);
+    let slim_engine = Engine::from_rules(slim_rules, Default::default());
 
     let requests_copy = load_requests();
     let requests_parsed_copy: Vec<_> = requests_copy

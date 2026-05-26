@@ -84,8 +84,6 @@ pub(crate) struct ListSource {
 pub struct FilterSet {
     pub(crate) debug: bool,
     pub(crate) list_sources: Vec<ListSource>,
-    // pub(crate) network_filters: Vec<NetworkFilter>,
-    // pub(crate) cosmetic_filters: Vec<CosmeticFilter>,
 }
 
 /// Collects metadata for the list by reading just until the first non-comment line.
@@ -232,28 +230,6 @@ impl FilterSet {
             list_sources: Vec::new(),
         }
     }
-
-    // pub fn into_iter(self) -> impl Iterator<Item = ParsedFilter> {
-    //     self.list_sources.into_iter().map(|list_source| {
-    //         let lines = list_source.lines.lines();
-    //         let parse_options = list_source.parse_options;
-    //         parse_filters(lines, self.debug, parse_options)
-    //     })
-    // }
-
-    // // Used in benchmarks to avoid parsing the rules twice.
-    // #[doc(hidden)]
-    // pub fn new_with_rules(
-    //     network_filters: Vec<NetworkFilter>,
-    //     cosmetic_filters: Vec<CosmeticFilter>,
-    //     debug: bool,
-    // ) -> Self {
-    //     Self {
-    //         debug,
-    //         network_filters,
-    //         cosmetic_filters,
-    //     }
-    // }
 
     /// Adds the contents of an entire filter list to this `FilterSet`. Filters that cannot be
     /// parsed successfully are ignored. Returns any discovered metadata about the list of rules
