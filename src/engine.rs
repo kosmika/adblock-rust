@@ -394,26 +394,6 @@ fn _assertions() {
     _assert_sync::<Engine>();
 }
 
-// fn make_flatbuffer(
-//     rules: impl IntoIterator<Item = ParsedFilter>,
-//     optimize: bool,
-// ) -> VerifiedFlatbufferMemory {
-//     let mut builder = EngineFlatBuilder::default();
-//     let mut network_rules_builder = NetworkRulesBuilder::new(optimize);
-//     let mut cosmetic_filters = vec![];
-
-//     for rule in rules {
-//         match rule {
-//             ParsedFilter::Network(filter) => network_rules_builder.add_rules(filter, &mut builder),
-//             ParsedFilter::Cosmetic(filter) => cosmetic_filters.push(filter),
-//         }
-//     }
-//     let network_rules = FlatSerialize::serialize(network_rules_builder, &mut builder);
-//     let cosmetic_rules = CosmeticFilterCacheBuilder::from_rules(cosmetic_filters, &mut builder);
-//     let cosmetic_rules = FlatSerialize::serialize(cosmetic_rules, &mut builder);
-//     builder.finish(network_rules, cosmetic_rules)
-// }
-
 #[cfg(test)]
 #[path = "../tests/unit/engine.rs"]
 mod unit_tests;
