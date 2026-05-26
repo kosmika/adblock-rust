@@ -51,8 +51,9 @@ fn string_tokenize(c: &mut Criterion) {
 }
 
 fn bench_parsing_impl(lists: &str) -> usize {
-  let (network_filters, _) = adblock::lists::parse_filters(lists.lines(), false, Default::default());
-   network_filters.len() % 1000000
+    let (network_filters, _) =
+        adblock::lists::parse_filters(lists.lines(), false, Default::default());
+    network_filters.len() % 1000000
 }
 
 fn list_parse(c: &mut Criterion) {

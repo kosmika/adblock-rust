@@ -135,18 +135,9 @@ impl Engine {
     pub fn new_with_parsed_rules(
         network_filters: Vec<NetworkFilter>,
         cosmetic_filters: Vec<CosmeticFilter>,
+        optimize: bool,
     ) -> Self {
-        let mut builder = EngineFlatBuilder::default();
-        let mut network_rules_builder = NetworkRulesBuilder::new(true);
-
-        for filter in network_filters {
-            network_rules_builder.add_rules(filter, &mut builder);
-        }
-
-        let network_rules = FlatSerialize::serialize(network_rules_builder, &mut builder);
-        let cosmetic_rules = CosmeticFilterCacheBuilder::from_rules(cosmetic_filters, &mut builder);
-        let cosmetic_rules = FlatSerialize::serialize(cosmetic_rules, &mut builder);
-        let memory = builder.finish(network_rules, cosmetic_rules);
+        let memory = make_flatbuffer(network_filters, cosmetic_filters, optimize);
         let filter_data_context = FilterDataContext::new(memory);
         Self {
             blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),
@@ -161,8 +152,7 @@ impl Engine {
     /// Loads rules from the given `FilterSet`. It is recommended to use a `FilterSet` when adding
     /// rules from multiple sources.
     pub fn from_filter_set(set: FilterSet, optimize: bool) -> Self {
-        let mut builder = EngineFlatBuilder::default();
-        let mut network_rules_builder = NetworkRulesBuilder::new(optimize);
+        let mut network_filters = vec![];
         let mut cosmetic_filters = vec![];
 
         for list_source in set.list_sources {
@@ -171,7 +161,7 @@ impl Engine {
                 if let Ok(ParsedLine::ParsedFilter(parsed_filter)) = parsed_line {
                     match parsed_filter {
                         ParsedFilter::Network(filter) => {
-                            network_rules_builder.add_rules(filter, &mut builder)
+                            network_filters.push(filter);
                         }
                         ParsedFilter::Cosmetic(filter) => cosmetic_filters.push(filter),
                     }
@@ -180,21 +170,7 @@ impl Engine {
                 }
             }
         }
-        let network_rules = FlatSerialize::serialize(network_rules_builder, &mut builder);
-        let cosmetic_rules = CosmeticFilterCacheBuilder::from_rules(cosmetic_filters, &mut builder);
-        let cosmetic_rules = FlatSerialize::serialize(cosmetic_rules, &mut builder);
-        let memory = builder.finish(network_rules, cosmetic_rules);
-
-        let filter_data_context = FilterDataContext::new(memory);
-
-        Self {
-            blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),
-            cosmetic_cache: CosmeticFilterCache::from_context(FilterDataContextRef::clone(
-                &filter_data_context,
-            )),
-            resources: ResourceStorage::default(),
-            filter_data_context,
-        }
+        Self::new_with_parsed_rules(network_filters, cosmetic_filters, optimize)
     }
 
     /// Check if a request for a network resource from `url`, of type `request_type`, initiated by
@@ -392,6 +368,19 @@ fn _assertions() {
 
     _assert_send::<Engine>();
     _assert_sync::<Engine>();
+}
+
+fn make_flatbuffer(
+    network_filters: Vec<NetworkFilter>,
+    cosmetic_filters: Vec<CosmeticFilter>,
+    optimize: bool,
+) -> VerifiedFlatbufferMemory {
+    let mut builder = EngineFlatBuilder::default();
+    let network_rules_builder = NetworkRulesBuilder::from_rules(network_filters, optimize);
+    let network_rules = FlatSerialize::serialize(network_rules_builder, &mut builder);
+    let cosmetic_rules = CosmeticFilterCacheBuilder::from_rules(cosmetic_filters, &mut builder);
+    let cosmetic_rules = FlatSerialize::serialize(cosmetic_rules, &mut builder);
+    builder.finish(network_rules, cosmetic_rules)
 }
 
 #[cfg(test)]

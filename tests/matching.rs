@@ -77,7 +77,7 @@ fn check_filter_matching() {
                     .set(NetworkFilterMask::IS_EXCEPTION, false);
                 filters.push(original_filter);
             }
-            let engine = adblock::Engine::new_with_parsed_rules(filters, vec![]);
+            let engine = adblock::Engine::new_with_parsed_rules(filters, vec![], true);
 
             let request_res = Request::new(&req.url, &req.sourceUrl, &req.r#type);
             // The dataset has cases where URL is set to just "http://" or "https://", which we do not support

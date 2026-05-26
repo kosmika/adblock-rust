@@ -310,10 +310,10 @@ pub enum FilterPart {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum FilterTokens {
+pub(crate) enum FilterTokens<'a> {
     Empty,
-    OptDomains,
-    Other,
+    OptDomains(&'a [Hash]),
+    Other(&'a [Hash]),
 }
 
 pub struct FilterPartIterator<'a> {
@@ -858,7 +858,10 @@ impl NetworkFilter {
         )
     }
 
-    pub(crate) fn get_tokens(&self, tokens_buffer: &mut TokensBuffer) -> FilterTokens {
+    pub(crate) fn get_tokens<'a>(
+        &'a self,
+        tokens_buffer: &'a mut TokensBuffer,
+    ) -> FilterTokens<'a> {
         tokens_buffer.clear();
 
         // If there is only one domain and no domain negation, we also use this
@@ -914,14 +917,7 @@ impl NetworkFilter {
         {
             if let Some(opt_domains) = self.opt_domains.as_ref() {
                 if !opt_domains.is_empty() {
-                    let cap = tokens_buffer.remaining_capacity();
-                    if opt_domains.len() <= cap {
-                        tokens_buffer.extend(opt_domains.iter().copied());
-                        return FilterTokens::OptDomains;
-                    }
-                    // Too many domains to bucket individually; fall back to the catch-all
-                    // bucket (token 0). The opt_domains constraint is still enforced during
-                    // request matching, so correctness is preserved.
+                    return FilterTokens::OptDomains(opt_domains);
                 }
             }
             FilterTokens::Empty
@@ -933,14 +929,13 @@ impl NetworkFilter {
                 tokens_buffer.push(utils::fast_hash("https"));
             }
 
-            FilterTokens::Other
+            FilterTokens::Other(tokens_buffer.as_slice())
         }
     }
 
     #[cfg(test)]
     pub(crate) fn matches_test(&self, request: &request::Request) -> bool {
-        let engine = crate::Engine::new_with_parsed_rules(vec![self.clone()], vec![]);
-
+        let engine = crate::Engine::new_with_parsed_rules(vec![self.clone()], vec![], true);
         if self.is_exception() {
             engine.check_network_request_exceptions(request)
         } else {
