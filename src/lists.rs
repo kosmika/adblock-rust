@@ -69,11 +69,10 @@ impl Default for ParseOptions {
     }
 }
 
-
 #[derive(Clone)]
 pub(crate) struct ListSource {
-  pub(crate) lines: String,
-  pub(crate) parse_options: ParseOptions,
+    pub(crate) lines: String,
+    pub(crate) parse_options: ParseOptions,
 }
 
 /// Manages a set of rules to be added to an [`crate::Engine`].
@@ -88,7 +87,6 @@ pub struct FilterSet {
     // pub(crate) network_filters: Vec<NetworkFilter>,
     // pub(crate) cosmetic_filters: Vec<CosmeticFilter>,
 }
-
 
 /// Collects metadata for the list by reading just until the first non-comment line.
 #[cfg(test)]
@@ -261,10 +259,10 @@ impl FilterSet {
     /// parsed successfully are ignored. Returns any discovered metadata about the list of rules
     /// added.
     pub fn add_filter_list(&mut self, filter_list: &str, opts: ParseOptions) {
-      self.list_sources.push(ListSource {
-        lines: filter_list.to_string(),
-        parse_options: opts,
-      });
+        self.list_sources.push(ListSource {
+            lines: filter_list.to_string(),
+            parse_options: opts,
+        });
         // self.add_filters(filter_list.lines(), opts)
     }
 
@@ -275,12 +273,16 @@ impl FilterSet {
         filters: impl IntoIterator<Item = impl AsRef<str>>,
         opts: ParseOptions,
     ) {
-      // TODO: rewrite
-      let lines = filters.into_iter().map(|line| line.as_ref().to_string()).collect::<Vec<_>>().join("\n");
-      self.list_sources.push(ListSource {
-        lines,
-        parse_options: opts,
-      });
+        // TODO: rewrite
+        let lines = filters
+            .into_iter()
+            .map(|line| line.as_ref().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.list_sources.push(ListSource {
+            lines,
+            parse_options: opts,
+        });
     }
 
     // /// Adds the string representation of a single filter rule to this `FilterSet`.
@@ -319,7 +321,8 @@ impl FilterSet {
         for list_source in self.list_sources.iter() {
             let lines = list_source.lines.lines();
             let parse_options = list_source.parse_options;
-            let (list_network_filters, list_cosmetic_filters) = parse_filters_deprecated(lines, self.debug, parse_options);
+            let (list_network_filters, list_cosmetic_filters) =
+                parse_filters(lines, self.debug, parse_options);
             network_filters.extend(list_network_filters);
             cosmetic_filters.extend(list_cosmetic_filters);
         }
@@ -362,7 +365,7 @@ impl FilterSet {
 
         let add_fp_document_exception = !filters_used.is_empty();
 
-        self.cosmetic_filters.into_iter().for_each(|filter| {
+        cosmetic_filters.into_iter().for_each(|filter| {
             let original_rule = *filter
                 .raw_line
                 .clone()
@@ -431,12 +434,12 @@ pub enum ParsedFilter {
 }
 
 pub enum ParsedLine {
-  ParsedFilter(ParsedFilter),
-  MetadataHomepage(String),
-  MetadataTitle(String),
-  MetadataExpires(ExpiresInterval),
-  MetadataRedirect(String),
-  MetadataOther,
+    ParsedFilter(ParsedFilter),
+    MetadataHomepage(String),
+    MetadataTitle(String),
+    MetadataExpires(ExpiresInterval),
+    MetadataRedirect(String),
+    MetadataOther,
 }
 
 impl From<NetworkFilter> for ParsedFilter {
@@ -552,33 +555,36 @@ pub fn parse_filter(
     }
 }
 
-
-pub(crate) fn parse_filter_line(line: &str, debug: bool, opts: ParseOptions) -> Result<ParsedLine, FilterParseError> {
-  if let Some(kv) = line.strip_prefix("! ") {
-    if let Some((key, value)) = kv.split_once(": ") {
-        match key {
-            "Homepage" => {
-                return Ok(ParsedLine::MetadataHomepage(value.to_string()));
-            }
-            "Title" => {
-                return Ok(ParsedLine::MetadataTitle(value.to_string()));
-            }
-            "Expires" => {
-                if let Ok(expires) = ExpiresInterval::try_from(value) {
-                    return Ok(ParsedLine::MetadataExpires(expires));
+pub(crate) fn parse_filter_line(
+    line: &str,
+    debug: bool,
+    opts: ParseOptions,
+) -> Result<ParsedLine, FilterParseError> {
+    if let Some(kv) = line.strip_prefix("! ") {
+        if let Some((key, value)) = kv.split_once(": ") {
+            match key {
+                "Homepage" => {
+                    return Ok(ParsedLine::MetadataHomepage(value.to_string()));
                 }
+                "Title" => {
+                    return Ok(ParsedLine::MetadataTitle(value.to_string()));
+                }
+                "Expires" => {
+                    if let Ok(expires) = ExpiresInterval::try_from(value) {
+                        return Ok(ParsedLine::MetadataExpires(expires));
+                    }
+                }
+                "Redirect" => {
+                    return Ok(ParsedLine::MetadataRedirect(value.to_string()));
+                }
+                _ => {}
             }
-            "Redirect" => {
-                return Ok(ParsedLine::MetadataRedirect(value.to_string()));
-            }
-            _ => {}
         }
+        return Ok(ParsedLine::MetadataOther);
     }
-    return Ok(ParsedLine::MetadataOther);
-  }
 
-  let parsed_filter = parse_filter(line, debug, opts)?;
-  Ok(ParsedLine::ParsedFilter(parsed_filter))
+    let parsed_filter = parse_filter(line, debug, opts)?;
+    Ok(ParsedLine::ParsedFilter(parsed_filter))
 }
 
 /// Parse an entire list of filters, ignoring any errors

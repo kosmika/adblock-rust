@@ -192,57 +192,55 @@ impl<'a> NetworkFilterListBuilder<'a> {
 }
 
 impl<'a> NetworkRulesBuilder<'a> {
-    pub fn new(optimize: bool)
-     -> Self {
+    pub fn new(optimize: bool) -> Self {
         let mut lists = vec![];
         for list_id in 0..NetworkFilterListId::Size as usize {
             // Don't optimize removeparam, since it can fuse filters without respecting distinct
             let optimize = optimize && list_id != NetworkFilterListId::RemoveParam as usize;
             lists.push(NetworkFilterListBuilder::new(optimize));
         }
-       Self {
+        Self {
             lists,
             bad_filter_ids: HashSet::new(),
         }
-      }
+    }
 
-      pub fn add_rules(&mut self, filter: NetworkFilter, builder: &mut EngineFlatBuilder<'a>) {
-            // skip any bad filters
-            if filter.is_badfilter() {
-                // Store the ID without the BAD_FILTER bit so it matches the
-                // corresponding normal filter that this badfilter is meant to cancel.
-                self.bad_filter_ids.insert(filter.get_id_without_badfilter());
-                return;
-            }
+    pub fn add_rules(&mut self, filter: NetworkFilter, builder: &mut EngineFlatBuilder<'a>) {
+        // skip any bad filters
+        if filter.is_badfilter() {
+            // Store the ID without the BAD_FILTER bit so it matches the
+            // corresponding normal filter that this badfilter is meant to cancel.
+            self.bad_filter_ids
+                .insert(filter.get_id_without_badfilter());
+            return;
+        }
 
-            // Redirects are independent of blocking behavior.
-            if filter.is_redirect() {
-                self.add_filter(filter.clone(), NetworkFilterListId::Redirects, builder);
-            }
-            type FilterId = NetworkFilterListId;
+        // Redirects are independent of blocking behavior.
+        if filter.is_redirect() {
+            self.add_filter(filter.clone(), NetworkFilterListId::Redirects, builder);
+        }
+        type FilterId = NetworkFilterListId;
 
-            let list_id: FilterId = if filter.is_csp() {
-                FilterId::Csp
-            } else if filter.is_removeparam() {
-                FilterId::RemoveParam
-            } else if filter.is_generic_hide() {
-                FilterId::GenericHide
-            } else if filter.is_exception() {
-                FilterId::Exceptions
-            } else if filter.is_important() {
-                FilterId::Importants
-            } else if filter.tag.is_some() && !filter.is_redirect() {
-                // `tag` + `redirect` is unsupported for now.
-                FilterId::TaggedFiltersAll
-            } else if (filter.is_redirect() && filter.also_block_redirect())
-                || !filter.is_redirect()
-            {
-                FilterId::Filters
-            } else {
-                return;
-            };
+        let list_id: FilterId = if filter.is_csp() {
+            FilterId::Csp
+        } else if filter.is_removeparam() {
+            FilterId::RemoveParam
+        } else if filter.is_generic_hide() {
+            FilterId::GenericHide
+        } else if filter.is_exception() {
+            FilterId::Exceptions
+        } else if filter.is_important() {
+            FilterId::Importants
+        } else if filter.tag.is_some() && !filter.is_redirect() {
+            // `tag` + `redirect` is unsupported for now.
+            FilterId::TaggedFiltersAll
+        } else if (filter.is_redirect() && filter.also_block_redirect()) || !filter.is_redirect() {
+            FilterId::Filters
+        } else {
+            return;
+        };
 
-            self.add_filter(filter, list_id, builder);
+        self.add_filter(filter, list_id, builder);
     }
 
     fn add_filter(
@@ -258,7 +256,10 @@ impl<'a> NetworkRulesBuilder<'a> {
 impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilterFlatEntry<'a> {
     type Output = WIPOffset<fb::NetworkFilter<'a>>;
 
-    fn serialize(value: Self, builder: &mut EngineFlatBuilder<'a>) -> WIPOffset<fb::NetworkFilter<'a>> {
+    fn serialize(
+        value: Self,
+        builder: &mut EngineFlatBuilder<'a>,
+    ) -> WIPOffset<fb::NetworkFilter<'a>> {
         FlatSerialize::serialize(value.filter, builder)
     }
 }
@@ -285,13 +286,17 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkRulesBuilder<'a> {
                     for filter in optimized {
                         let id = filter.get_id();
                         let filter = FlatSerialize::serialize(filter, builder);
-                        rule_list.flat_map_builder.insert(token, NetworkFilterFlatEntry { filter, id });
+                        rule_list
+                            .flat_map_builder
+                            .insert(token, NetworkFilterFlatEntry { filter, id });
                     }
                 }
             }
 
             // TODO: filter out bad filters
-            rule_list.flat_map_builder.retain_by_value(|entry| !value.bad_filter_ids.contains(&entry.id));
+            rule_list
+                .flat_map_builder
+                .retain_by_value(|entry| !value.bad_filter_ids.contains(&entry.id));
 
             let flat_filter_map = FlatMultiMapBuilder::finish(rule_list.flat_map_builder, builder);
 

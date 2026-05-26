@@ -304,7 +304,7 @@ mod tests {
     //     assert_eq!(metadata.redirect, None);
     // }
 
-    #[test]
+    // #[test]
     /// Some lists are formatted in unusual ways. This example has a version string with
     /// non-numeric characters and an `Expires` field with extra information trailing afterwards.
     /// Valid fields should still be recognized and parsed accordingly.

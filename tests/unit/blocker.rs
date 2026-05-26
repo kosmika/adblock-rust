@@ -2,7 +2,6 @@
 mod blocker_tests {
 
     use super::super::*;
-    use crate::lists::parse_filters;
     use crate::request::Request;
     use crate::resources::{Resource, ResourceStorage};
     use base64::{engine::Engine as _, prelude::BASE64_STANDARD};
@@ -1316,8 +1315,7 @@ mod placeholder_string_tests {
     #[test]
     fn test_constant_placeholder_string() {
         let mut filter_set = crate::lists::FilterSet::new(false);
-        filter_set
-            .add_filter_list("||example.com^\n", Default::default());
+        filter_set.add_filter_list("||example.com^\n", Default::default());
         let engine = crate::Engine::from_filter_set(filter_set, true);
         let block = engine.check_network_request(
             &crate::request::Request::new("https://example.com", "https://example.com", "document")
