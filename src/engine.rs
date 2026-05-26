@@ -9,7 +9,9 @@ use crate::filters::fb_network_builder::NetworkRulesBuilder;
 use crate::filters::filter_data_context::{FilterDataContext, FilterDataContextRef};
 use crate::flatbuffers::containers::flat_serialize::FlatSerialize;
 use crate::flatbuffers::unsafe_tools::VerifiedFlatbufferMemory;
-use crate::lists::{parse_filter_line, FilterSet, ParseOptions, ParsedFilter, ParsedLine};
+use crate::lists::{
+    parse_filter_line, FilterListMetadata, FilterSet, ParseOptions, ParsedFilter, ParsedLine,
+};
 use crate::regex_manager::RegexManagerDiscardPolicy;
 use crate::request::Request;
 use crate::resources::{Resource, ResourceStorage, ResourceStorageBackend};
@@ -143,7 +145,6 @@ impl Engine {
         self.filter_data_context
     }
 
-    // TODO: make test only and rewrite
     #[doc(hidden)]
     pub fn new_with_parsed_rules(
         network_filters: Vec<NetworkFilter>,
@@ -151,7 +152,9 @@ impl Engine {
         optimize: bool,
     ) -> Self {
         let memory = make_flatbuffer(network_filters, cosmetic_filters, optimize);
+
         let filter_data_context = FilterDataContext::new(memory);
+
         Self {
             blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),
             cosmetic_cache: CosmeticFilterCache::from_context(FilterDataContextRef::clone(
@@ -165,25 +168,44 @@ impl Engine {
     /// Loads rules from the given `FilterSet`. It is recommended to use a `FilterSet` when adding
     /// rules from multiple sources.
     pub fn from_filter_set(set: FilterSet, optimize: bool) -> Self {
+        let (engine, _) = Self::from_filter_set_with_metadata(set, optimize);
+        engine
+    }
+
+    #[doc(hidden)]
+    pub fn from_filter_set_with_metadata(
+        set: FilterSet,
+        optimize: bool,
+    ) -> (Self, Vec<FilterListMetadata>) {
+        let mut metadata_list = vec![];
         let mut network_filters = vec![];
         let mut cosmetic_filters = vec![];
 
         for list_source in set.list_sources {
+            let mut metadata = FilterListMetadata::default();
             for line in list_source.lines.lines() {
                 let parsed_line = parse_filter_line(line, set.debug, list_source.parse_options);
-                if let Ok(ParsedLine::ParsedFilter(parsed_filter)) = parsed_line {
-                    match parsed_filter {
+                match parsed_line {
+                    Ok(ParsedLine::ParsedFilter(parsed_filter)) => match parsed_filter {
                         ParsedFilter::Network(filter) => {
                             network_filters.push(filter);
                         }
                         ParsedFilter::Cosmetic(filter) => cosmetic_filters.push(filter),
+                    },
+                    Ok(ParsedLine::Metadata(item)) => {
+                        metadata.add_metadata(item);
                     }
-                } else {
-                    // TODO: handle error?
+                    Err(error) => {
+                        metadata.add_error(error);
+                    }
                 }
             }
+            metadata_list.push(metadata);
         }
-        Self::new_with_parsed_rules(network_filters, cosmetic_filters, optimize)
+        (
+            Self::new_with_parsed_rules(network_filters, cosmetic_filters, optimize),
+            metadata_list,
+        )
     }
 
     /// Check if a request for a network resource from `url`, of type `request_type`, initiated by
