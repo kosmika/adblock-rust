@@ -465,6 +465,17 @@ impl Blocker {
         Self::from_context(engine.filter_data_context())
     }
 
+    #[cfg(test)]
+    pub fn new_from_text(text: String, options: &BlockerOptions) -> Self {
+        use crate::engine::Engine;
+        use crate::FilterSet;
+
+        let mut filter_set = FilterSet::new(true);
+        filter_set.add_filter_list(text, Default::default());
+        let engine = Engine::from_filter_set(filter_set, options.enable_optimizations);
+        Self::from_context(engine.filter_data_context())
+    }
+
     pub fn use_tags(&mut self, tags: &[&str]) {
         let tag_set: HashSet<String> = tags.iter().map(|&t| String::from(t)).collect();
         self.tags_with_set(tag_set);

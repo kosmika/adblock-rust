@@ -48,11 +48,11 @@ fn get_blocker_engine() -> Engine {
         "data/regression-testing/easyprivacy.txt",
     ]);
 
-    Engine::from_rules_parametrised(rules, Default::default(), true, false)
+    Engine::from_text_parametrised(rules, Default::default(), true, false)
 }
 
 fn get_blocker_engine_default(extra_rules: impl IntoIterator<Item = impl AsRef<str>>) -> Engine {
-    let rules = rules_from_lists([
+    let mut rules = rules_from_lists([
         "data/easylist.to/easylist/easylist.txt",
         "data/easylist.to/easylist/easyprivacy.txt",
         "data/uBlockOrigin/unbreak.txt",
@@ -62,9 +62,12 @@ fn get_blocker_engine_default(extra_rules: impl IntoIterator<Item = impl AsRef<s
         // "data/test/abpjf.txt",
     ]);
 
-    let all_rules = rules.chain(extra_rules.into_iter().map(|r| r.as_ref().to_string()));
+    for rule in extra_rules {
+        rules.push_str(rule.as_ref());
+        rules.push('\n');
+    }
 
-    Engine::from_rules_parametrised(all_rules, Default::default(), true, false)
+    Engine::from_text_parametrised(rules, Default::default(), true, false)
 }
 
 #[test]

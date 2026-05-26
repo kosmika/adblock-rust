@@ -214,8 +214,8 @@ mod tests {
 
     #[test]
     fn deserialization_brave_list() {
-        let rules = rules_from_lists(&["data/brave/brave-main-list.txt"]);
-        let mut engine = Engine::from_rules_parametrised(rules, Default::default(), false, true);
+        let rules = rules_from_lists(["data/brave/brave-main-list.txt"]);
+        let mut engine = Engine::from_text_parametrised(rules, Default::default(), false, true);
         let data = engine.serialize().to_vec();
 
         #[cfg(feature = "debug-info")]

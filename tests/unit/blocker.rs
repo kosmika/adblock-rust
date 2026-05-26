@@ -1315,7 +1315,7 @@ mod placeholder_string_tests {
     #[test]
     fn test_constant_placeholder_string() {
         let mut filter_set = crate::lists::FilterSet::new(false);
-        filter_set.add_filter_list("||example.com^\n", Default::default());
+        filter_set.add_filter_list("||example.com^\n".to_string(), Default::default());
         let engine = crate::Engine::from_filter_set(filter_set, true);
         let block = engine.check_network_request(
             &crate::request::Request::new("https://example.com", "https://example.com", "document")
@@ -1426,11 +1426,10 @@ mod legacy_rule_parsing_tests {
         format: FilterFormat,
         expectation: ListCounts,
     ) {
-        // TODO: remove collect()?
-        let rules = rules_from_lists(rule_lists).collect::<Vec<String>>();
+        let rules = rules_from_lists(rule_lists);
 
         let (network_filters, cosmetic_filters) = parse_filters(
-            rules.iter(),
+            rules.lines(),
             true,
             ParseOptions {
                 format,
@@ -1456,7 +1455,7 @@ mod legacy_rule_parsing_tests {
             enable_optimizations: false, // optimizations will reduce number of rules
         };
 
-        let blocker = Blocker::new(rules, &blocker_options);
+        let blocker = Blocker::new_from_text(rules, &blocker_options);
 
         // Some filters in the filter_map are pointed at by multiple tokens, increasing the total number of items
         assert!(

@@ -101,7 +101,22 @@ impl Engine {
             lines.push('\n');
         }
         let mut filter_set = FilterSet::new(debug);
-        filter_set.add_filter_list(&lines, opts);
+        filter_set.add_filter_list(lines, opts);
+        Self::from_filter_set(filter_set, optimize)
+    }
+
+    pub fn from_text(text: String, opts: ParseOptions) -> Self {
+        Self::from_text_parametrised(text, opts, false, true)
+    }
+
+    pub fn from_text_parametrised(
+        text: String,
+        opts: ParseOptions,
+        debug: bool,
+        optimize: bool,
+    ) -> Self {
+        let mut filter_set = FilterSet::new(debug);
+        filter_set.add_filter_list(text, opts);
         Self::from_filter_set(filter_set, optimize)
     }
 

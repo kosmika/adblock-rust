@@ -235,16 +235,16 @@ impl FilterSet {
     /// Adds the contents of an entire filter list to this `FilterSet`. Filters that cannot be
     /// parsed successfully are ignored. Returns any discovered metadata about the list of rules
     /// added.
-    pub fn add_filter_list(&mut self, filter_list: &str, opts: ParseOptions) {
+    pub fn add_filter_list(&mut self, filter_list: String, opts: ParseOptions) {
         self.list_sources.push(ListSource {
-            lines: filter_list.to_string(),
+            lines: filter_list,
             parse_options: opts,
         });
-        // self.add_filters(filter_list.lines(), opts)
     }
 
     /// Adds a collection of filter rules to this `FilterSet`. Filters that cannot be parsed
     /// successfully are ignored. Returns any discovered metadata about the list of rules added.
+    #[cfg(test)]
     pub fn add_filters(
         &mut self,
         filters: impl IntoIterator<Item = impl AsRef<str>>,
@@ -262,15 +262,11 @@ impl FilterSet {
         });
     }
 
-    // /// Adds the string representation of a single filter rule to this `FilterSet`.
-    // pub fn add_filter(&mut self, filter: &str, opts: ParseOptions) -> Result<(), FilterParseError> {
-    //     let filter_parsed = parse_filter(filter, self.debug, opts);
-    //     match filter_parsed? {
-    //         ParsedFilter::Network(filter) => self.network_filters.push(filter),
-    //         ParsedFilter::Cosmetic(filter) => self.cosmetic_filters.push(filter),
-    //     }
-    //     Ok(())
-    // }
+    /// Adds the string representation of a single filter rule to this `FilterSet`.
+    #[cfg(test)]
+    pub fn add_filter(&mut self, filter: &str, opts: ParseOptions) {
+        self.add_filters([filter], opts)
+    }
 
     /// Consumes this `FilterSet`, returning an equivalent list of content blocking rules and a
     /// corresponding new list containing the `String` representation of all filters that were
