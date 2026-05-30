@@ -4,6 +4,7 @@
 use memchr::memchr as find_char;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use thiserror::Error;
 
@@ -756,7 +757,10 @@ impl NetworkFilter {
                 let hostname =
                     idna::domain_to_ascii_cow(host.as_bytes(), idna::AsciiDenyList::EMPTY)
                         .map_err(|_| NetworkFilterError::PunycodeError)?;
-                Ok(hostname.to_string())
+                match hostname {
+                    Cow::Borrowed(_) => Ok(host),
+                    Cow::Owned(h) => Ok(h.to_string()),
+                }
             })
             .transpose();
 
