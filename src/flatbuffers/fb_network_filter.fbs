@@ -28,7 +28,10 @@ table NetworkFilter {
 
   tag: string;
 
+  // Debug mode only
   raw_line: string;
+  source_index: int32 = -1;
+  line_number: int32 = -1;
 }
 
 table NetworkFilterList {

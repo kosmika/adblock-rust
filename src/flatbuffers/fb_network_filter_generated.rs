@@ -44,6 +44,8 @@ pub mod fb {
         pub const VT_HOSTNAME: flatbuffers::VOffsetT = 16;
         pub const VT_TAG: flatbuffers::VOffsetT = 18;
         pub const VT_RAW_LINE: flatbuffers::VOffsetT = 20;
+        pub const VT_SOURCE_INDEX: flatbuffers::VOffsetT = 22;
+        pub const VT_LINE_NUMBER: flatbuffers::VOffsetT = 24;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -60,6 +62,8 @@ pub mod fb {
             args: &'args NetworkFilterArgs<'args>,
         ) -> flatbuffers::WIPOffset<NetworkFilter<'bldr>> {
             let mut builder = NetworkFilterBuilder::new(_fbb);
+            builder.add_line_number(args.line_number);
+            builder.add_source_index(args.source_index);
             if let Some(x) = args.raw_line {
                 builder.add_raw_line(x);
             }
@@ -100,6 +104,8 @@ pub mod fb {
             let hostname = self.hostname().map(|x| x.to_string());
             let tag = self.tag().map(|x| x.to_string());
             let raw_line = self.raw_line().map(|x| x.to_string());
+            let source_index = self.source_index();
+            let line_number = self.line_number();
             NetworkFilterT {
                 mask,
                 opt_domains,
@@ -110,6 +116,8 @@ pub mod fb {
                 hostname,
                 tag,
                 raw_line,
+                source_index,
+                line_number,
             }
         }
 
@@ -220,6 +228,28 @@ pub mod fb {
                     .get::<flatbuffers::ForwardsUOffset<&str>>(NetworkFilter::VT_RAW_LINE, None)
             }
         }
+        #[inline]
+        pub fn source_index(&self) -> i32 {
+            // Safety:
+            // Created from valid Table for this object
+            // which contains a valid value in this slot
+            unsafe {
+                self._tab
+                    .get::<i32>(NetworkFilter::VT_SOURCE_INDEX, Some(-1))
+                    .unwrap()
+            }
+        }
+        #[inline]
+        pub fn line_number(&self) -> i32 {
+            // Safety:
+            // Created from valid Table for this object
+            // which contains a valid value in this slot
+            unsafe {
+                self._tab
+                    .get::<i32>(NetworkFilter::VT_LINE_NUMBER, Some(-1))
+                    .unwrap()
+            }
+        }
     }
 
     impl flatbuffers::Verifiable for NetworkFilter<'_> {
@@ -265,6 +295,8 @@ pub mod fb {
                     Self::VT_RAW_LINE,
                     false,
                 )?
+                .visit_field::<i32>("source_index", Self::VT_SOURCE_INDEX, false)?
+                .visit_field::<i32>("line_number", Self::VT_LINE_NUMBER, false)?
                 .finish();
             Ok(())
         }
@@ -281,6 +313,8 @@ pub mod fb {
         pub hostname: Option<flatbuffers::WIPOffset<&'a str>>,
         pub tag: Option<flatbuffers::WIPOffset<&'a str>>,
         pub raw_line: Option<flatbuffers::WIPOffset<&'a str>>,
+        pub source_index: i32,
+        pub line_number: i32,
     }
     impl<'a> Default for NetworkFilterArgs<'a> {
         #[inline]
@@ -295,6 +329,8 @@ pub mod fb {
                 hostname: None,
                 tag: None,
                 raw_line: None,
+                source_index: -1,
+                line_number: -1,
             }
         }
     }
@@ -375,6 +411,16 @@ pub mod fb {
             );
         }
         #[inline]
+        pub fn add_source_index(&mut self, source_index: i32) {
+            self.fbb_
+                .push_slot::<i32>(NetworkFilter::VT_SOURCE_INDEX, source_index, -1);
+        }
+        #[inline]
+        pub fn add_line_number(&mut self, line_number: i32) {
+            self.fbb_
+                .push_slot::<i32>(NetworkFilter::VT_LINE_NUMBER, line_number, -1);
+        }
+        #[inline]
         pub fn new(
             _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         ) -> NetworkFilterBuilder<'a, 'b, A> {
@@ -403,6 +449,8 @@ pub mod fb {
             ds.field("hostname", &self.hostname());
             ds.field("tag", &self.tag());
             ds.field("raw_line", &self.raw_line());
+            ds.field("source_index", &self.source_index());
+            ds.field("line_number", &self.line_number());
             ds.finish()
         }
     }
@@ -418,6 +466,8 @@ pub mod fb {
         pub hostname: Option<String>,
         pub tag: Option<String>,
         pub raw_line: Option<String>,
+        pub source_index: i32,
+        pub line_number: i32,
     }
     impl Default for NetworkFilterT {
         fn default() -> Self {
@@ -431,6 +481,8 @@ pub mod fb {
                 hostname: None,
                 tag: None,
                 raw_line: None,
+                source_index: -1,
+                line_number: -1,
             }
         }
     }
@@ -451,6 +503,8 @@ pub mod fb {
             let hostname = self.hostname.as_ref().map(|x| _fbb.create_string(x));
             let tag = self.tag.as_ref().map(|x| _fbb.create_string(x));
             let raw_line = self.raw_line.as_ref().map(|x| _fbb.create_string(x));
+            let source_index = self.source_index;
+            let line_number = self.line_number;
             NetworkFilter::create(
                 _fbb,
                 &NetworkFilterArgs {
@@ -463,6 +517,8 @@ pub mod fb {
                     hostname,
                     tag,
                     raw_line,
+                    source_index,
+                    line_number,
                 },
             )
         }
