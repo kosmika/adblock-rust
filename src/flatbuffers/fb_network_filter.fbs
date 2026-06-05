@@ -120,6 +120,7 @@ table SourceInfo {
   network_filter_count: int32;
   cosmetic_filter_count: int32;
   parse_error: int32;
+  invalid_lines: [string];
 }
 
 /// A root type containing a serialized Engine.

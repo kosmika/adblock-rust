@@ -143,6 +143,7 @@ impl Engine {
             let mut network_filter_count = 0;
             let mut cosmetic_filter_count = 0;
             let mut parse_error = 0;
+            let mut invalid_lines = Vec::new();
             for (line_number, line) in list_source.list_text.lines().enumerate() {
                 let parsed_line = parse_filter(line, debug, list_source.parse_options);
                 match parsed_line {
@@ -164,6 +165,9 @@ impl Engine {
                     }
                     Err(_) => {
                         parse_error += 1;
+                        if set.debug {
+                            invalid_lines.push(line);
+                        }
                     }
                 }
             }
@@ -183,6 +187,12 @@ impl Engine {
                 .as_ref()
                 .map(|v| builder.create_string(v.as_str()));
 
+            let invalid_lines = if set.debug {
+                Some(FlatSerialize::serialize(invalid_lines, &mut builder))
+            } else {
+                None
+            };
+
             let source_info = fb::SourceInfo::create(
                 builder.raw_builder(),
                 &fb::SourceInfoArgs {
@@ -192,6 +202,7 @@ impl Engine {
                     network_filter_count,
                     cosmetic_filter_count,
                     parse_error,
+                    invalid_lines,
                 },
             );
 

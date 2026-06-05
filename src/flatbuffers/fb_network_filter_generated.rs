@@ -2170,6 +2170,7 @@ pub mod fb {
         pub const VT_NETWORK_FILTER_COUNT: flatbuffers::VOffsetT = 10;
         pub const VT_COSMETIC_FILTER_COUNT: flatbuffers::VOffsetT = 12;
         pub const VT_PARSE_ERROR: flatbuffers::VOffsetT = 14;
+        pub const VT_INVALID_LINES: flatbuffers::VOffsetT = 16;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2186,6 +2187,9 @@ pub mod fb {
             args: &'args SourceInfoArgs<'args>,
         ) -> flatbuffers::WIPOffset<SourceInfo<'bldr>> {
             let mut builder = SourceInfoBuilder::new(_fbb);
+            if let Some(x) = args.invalid_lines {
+                builder.add_invalid_lines(x);
+            }
             builder.add_parse_error(args.parse_error);
             builder.add_cosmetic_filter_count(args.cosmetic_filter_count);
             builder.add_network_filter_count(args.network_filter_count);
@@ -2208,6 +2212,9 @@ pub mod fb {
             let network_filter_count = self.network_filter_count();
             let cosmetic_filter_count = self.cosmetic_filter_count();
             let parse_error = self.parse_error();
+            let invalid_lines = self
+                .invalid_lines()
+                .map(|x| x.iter().map(|s| s.to_string()).collect());
             SourceInfoT {
                 title,
                 homepage,
@@ -2215,6 +2222,7 @@ pub mod fb {
                 network_filter_count,
                 cosmetic_filter_count,
                 parse_error,
+                invalid_lines,
             }
         }
 
@@ -2281,6 +2289,19 @@ pub mod fb {
                     .unwrap()
             }
         }
+        #[inline]
+        pub fn invalid_lines(
+            &self,
+        ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>> {
+            // Safety:
+            // Created from valid Table for this object
+            // which contains a valid value in this slot
+            unsafe {
+                self._tab.get::<flatbuffers::ForwardsUOffset<
+                    flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>,
+                >>(SourceInfo::VT_INVALID_LINES, None)
+            }
+        }
     }
 
     impl flatbuffers::Verifiable for SourceInfo<'_> {
@@ -2309,6 +2330,9 @@ pub mod fb {
                     false,
                 )?
                 .visit_field::<i32>("parse_error", Self::VT_PARSE_ERROR, false)?
+                .visit_field::<flatbuffers::ForwardsUOffset<
+                    flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>,
+                >>("invalid_lines", Self::VT_INVALID_LINES, false)?
                 .finish();
             Ok(())
         }
@@ -2320,6 +2344,9 @@ pub mod fb {
         pub network_filter_count: i32,
         pub cosmetic_filter_count: i32,
         pub parse_error: i32,
+        pub invalid_lines: Option<
+            flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+        >,
     }
     impl<'a> Default for SourceInfoArgs<'a> {
         #[inline]
@@ -2331,6 +2358,7 @@ pub mod fb {
                 network_filter_count: 0,
                 cosmetic_filter_count: 0,
                 parse_error: 0,
+                invalid_lines: None,
             }
         }
     }
@@ -2377,6 +2405,18 @@ pub mod fb {
                 .push_slot::<i32>(SourceInfo::VT_PARSE_ERROR, parse_error, 0);
         }
         #[inline]
+        pub fn add_invalid_lines(
+            &mut self,
+            invalid_lines: flatbuffers::WIPOffset<
+                flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+            >,
+        ) {
+            self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                SourceInfo::VT_INVALID_LINES,
+                invalid_lines,
+            );
+        }
+        #[inline]
         pub fn new(
             _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         ) -> SourceInfoBuilder<'a, 'b, A> {
@@ -2402,6 +2442,7 @@ pub mod fb {
             ds.field("network_filter_count", &self.network_filter_count());
             ds.field("cosmetic_filter_count", &self.cosmetic_filter_count());
             ds.field("parse_error", &self.parse_error());
+            ds.field("invalid_lines", &self.invalid_lines());
             ds.finish()
         }
     }
@@ -2414,6 +2455,7 @@ pub mod fb {
         pub network_filter_count: i32,
         pub cosmetic_filter_count: i32,
         pub parse_error: i32,
+        pub invalid_lines: Option<Vec<String>>,
     }
     impl Default for SourceInfoT {
         fn default() -> Self {
@@ -2424,6 +2466,7 @@ pub mod fb {
                 network_filter_count: 0,
                 cosmetic_filter_count: 0,
                 parse_error: 0,
+                invalid_lines: None,
             }
         }
     }
@@ -2438,6 +2481,10 @@ pub mod fb {
             let network_filter_count = self.network_filter_count;
             let cosmetic_filter_count = self.cosmetic_filter_count;
             let parse_error = self.parse_error;
+            let invalid_lines = self.invalid_lines.as_ref().map(|x| {
+                let w: Vec<_> = x.iter().map(|s| _fbb.create_string(s)).collect();
+                _fbb.create_vector(&w)
+            });
             SourceInfo::create(
                 _fbb,
                 &SourceInfoArgs {
@@ -2447,6 +2494,7 @@ pub mod fb {
                     network_filter_count,
                     cosmetic_filter_count,
                     parse_error,
+                    invalid_lines,
                 },
             )
         }
