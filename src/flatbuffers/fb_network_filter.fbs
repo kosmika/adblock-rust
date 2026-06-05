@@ -113,6 +113,15 @@ table CosmeticFilters {
   hostname_values: [HostnameSpecificRules] (required);
 }
 
+table SourceInfo {
+  title: string;
+  homepage: string;
+  filename: string;
+  network_filter_count: int32;
+  cosmetic_filter_count: int32;
+  parse_error: int32;
+}
+
 /// A root type containing a serialized Engine.
 table Engine {
   /// Contains several NetworkFilterList matching to different kinds of lists.
@@ -126,6 +135,8 @@ table Engine {
   cosmetic_filters: CosmeticFilters (required);
 
   debug: bool;
+
+  source_info: [SourceInfo] (required);
 }
 
 root_type Engine;

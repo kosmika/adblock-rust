@@ -8,7 +8,7 @@ use crate::filters::fb_builder::EngineFlatBuilder;
 use crate::filters::fb_network_builder::{NetworkFilterDebugData, NetworkRulesBuilder};
 use crate::filters::filter_data_context::{FilterDataContext, FilterDataContextRef};
 use crate::filters::flatbuffer_generated::fb;
-use crate::flatbuffers::containers::flat_serialize::FlatSerialize;
+use crate::flatbuffers::containers::flat_serialize::{FlatBuilder, FlatSerialize};
 use crate::flatbuffers::unsafe_tools::VerifiedFlatbufferMemory;
 use crate::lists::{parse_filter, FilterSet, ParseOptions, ParsedLine};
 use crate::regex_manager::RegexManagerDiscardPolicy;
@@ -122,6 +122,7 @@ impl Engine {
         Self::new_with_flatbuffer_offsets(
             FlatSerialize::serialize(network_rules_builder, &mut builder),
             FlatSerialize::serialize(cosmetic_filter_cache_builder, &mut builder),
+            Vec::new(),
             !optimize,
             builder,
         )
@@ -136,8 +137,12 @@ impl Engine {
         let mut builder = EngineFlatBuilder::default();
         let mut network_rules_builder = NetworkRulesBuilder::new(optimize);
         let mut cosmetic_filter_cache_builder = CosmeticFilterCacheBuilder::default();
+        let mut source_info_vec = Vec::new();
 
         for (source_index, list_source) in set.list_sources.iter().enumerate() {
+            let mut network_filter_count = 0;
+            let mut cosmetic_filter_count = 0;
+            let mut parse_error = 0;
             for (line_number, line) in list_source.list_text.lines().enumerate() {
                 let parsed_line = parse_filter(line, debug, list_source.parse_options);
                 match parsed_line {
@@ -150,14 +155,47 @@ impl Engine {
                         } else {
                             Default::default()
                         };
-                        network_rules_builder.add_filter(filter, debug_data, &mut builder)
+                        network_rules_builder.add_filter(filter, debug_data, &mut builder);
+                        network_filter_count += 1;
                     }
                     Ok(ParsedLine::Cosmetic(filter)) => {
-                        cosmetic_filter_cache_builder.add_filter(filter, &mut builder)
+                        cosmetic_filter_cache_builder.add_filter(filter, &mut builder);
+                        cosmetic_filter_count += 1;
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        parse_error += 1;
+                    }
                 }
             }
+
+            let homepage = list_source
+                .metadata
+                .homepage
+                .as_ref()
+                .map(|v| builder.create_string(v.as_str()));
+            let title = list_source
+                .metadata
+                .title
+                .as_ref()
+                .map(|v| builder.create_string(v.as_str()));
+            let filename = list_source
+                .filename
+                .as_ref()
+                .map(|v| builder.create_string(v.as_str()));
+
+            let source_info = fb::SourceInfo::create(
+                builder.raw_builder(),
+                &fb::SourceInfoArgs {
+                    title,
+                    homepage,
+                    filename,
+                    network_filter_count,
+                    cosmetic_filter_count,
+                    parse_error,
+                },
+            );
+
+            source_info_vec.push(source_info);
         }
         let network_rules_offset = FlatSerialize::serialize(network_rules_builder, &mut builder);
         // Drop the list sources to reduce peak memory usage.
@@ -169,6 +207,7 @@ impl Engine {
         Self::new_with_flatbuffer_offsets(
             network_rules_offset,
             cosmetic_rules_offset,
+            source_info_vec,
             debug,
             builder,
         )
@@ -179,10 +218,12 @@ impl Engine {
             flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<fb::NetworkFilterList<'a>>>,
         >,
         cosmetic_rules: flatbuffers::WIPOffset<fb::CosmeticFilters<'a>>,
+        source_info_vec: Vec<flatbuffers::WIPOffset<fb::SourceInfo<'a>>>,
         debug: bool,
         mut builder: EngineFlatBuilder<'a>,
     ) -> Self {
-        let memory = builder.finish(network_rules, cosmetic_rules, debug);
+        let source_info_vec = FlatSerialize::serialize(source_info_vec, &mut builder);
+        let memory = builder.finish(network_rules, cosmetic_rules, source_info_vec, debug);
         let filter_data_context = FilterDataContext::new(memory);
         Self {
             blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),
