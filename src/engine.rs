@@ -122,6 +122,7 @@ impl Engine {
         Self::new_with_flatbuffer_offsets(
             FlatSerialize::serialize(network_rules_builder, &mut builder),
             FlatSerialize::serialize(cosmetic_filter_cache_builder, &mut builder),
+            !optimize,
             builder,
         )
     }
@@ -165,7 +166,12 @@ impl Engine {
         let cosmetic_rules_offset =
             FlatSerialize::serialize(cosmetic_filter_cache_builder, &mut builder);
 
-        Self::new_with_flatbuffer_offsets(network_rules_offset, cosmetic_rules_offset, builder)
+        Self::new_with_flatbuffer_offsets(
+            network_rules_offset,
+            cosmetic_rules_offset,
+            debug,
+            builder,
+        )
     }
 
     fn new_with_flatbuffer_offsets<'a>(
@@ -173,9 +179,10 @@ impl Engine {
             flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<fb::NetworkFilterList<'a>>>,
         >,
         cosmetic_rules: flatbuffers::WIPOffset<fb::CosmeticFilters<'a>>,
+        debug: bool,
         mut builder: EngineFlatBuilder<'a>,
     ) -> Self {
-        let memory = builder.finish(network_rules, cosmetic_rules);
+        let memory = builder.finish(network_rules, cosmetic_rules, debug);
         let filter_data_context = FilterDataContext::new(memory);
         Self {
             blocker: Blocker::from_context(FilterDataContextRef::clone(&filter_data_context)),

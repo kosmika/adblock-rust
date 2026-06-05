@@ -2168,6 +2168,7 @@ pub mod fb {
         pub const VT_NETWORK_RULES: flatbuffers::VOffsetT = 4;
         pub const VT_UNIQUE_DOMAINS_HASHES: flatbuffers::VOffsetT = 6;
         pub const VT_COSMETIC_FILTERS: flatbuffers::VOffsetT = 8;
+        pub const VT_DEBUG: flatbuffers::VOffsetT = 10;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2193,6 +2194,7 @@ pub mod fb {
             if let Some(x) = args.network_rules {
                 builder.add_network_rules(x);
             }
+            builder.add_debug(args.debug);
             builder.finish()
         }
 
@@ -2209,10 +2211,12 @@ pub mod fb {
                 let x = self.cosmetic_filters();
                 Box::new(x.unpack())
             };
+            let debug = self.debug();
             EngineT {
                 network_rules,
                 unique_domains_hashes,
                 cosmetic_filters,
+                debug,
             }
         }
 
@@ -2263,6 +2267,17 @@ pub mod fb {
                     .unwrap()
             }
         }
+        #[inline]
+        pub fn debug(&self) -> bool {
+            // Safety:
+            // Created from valid Table for this object
+            // which contains a valid value in this slot
+            unsafe {
+                self._tab
+                    .get::<bool>(Engine::VT_DEBUG, Some(false))
+                    .unwrap()
+            }
+        }
     }
 
     impl flatbuffers::Verifiable for Engine<'_> {
@@ -2286,6 +2301,7 @@ pub mod fb {
                     Self::VT_COSMETIC_FILTERS,
                     true,
                 )?
+                .visit_field::<bool>("debug", Self::VT_DEBUG, false)?
                 .finish();
             Ok(())
         }
@@ -2298,6 +2314,7 @@ pub mod fb {
         >,
         pub unique_domains_hashes: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u64>>>,
         pub cosmetic_filters: Option<flatbuffers::WIPOffset<CosmeticFilters<'a>>>,
+        pub debug: bool,
     }
     impl<'a> Default for EngineArgs<'a> {
         #[inline]
@@ -2306,6 +2323,7 @@ pub mod fb {
                 network_rules: None,         // required field
                 unique_domains_hashes: None, // required field
                 cosmetic_filters: None,      // required field
+                debug: false,
             }
         }
     }
@@ -2349,6 +2367,10 @@ pub mod fb {
                 );
         }
         #[inline]
+        pub fn add_debug(&mut self, debug: bool) {
+            self.fbb_.push_slot::<bool>(Engine::VT_DEBUG, debug, false);
+        }
+        #[inline]
         pub fn new(
             _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         ) -> EngineBuilder<'a, 'b, A> {
@@ -2377,6 +2399,7 @@ pub mod fb {
             ds.field("network_rules", &self.network_rules());
             ds.field("unique_domains_hashes", &self.unique_domains_hashes());
             ds.field("cosmetic_filters", &self.cosmetic_filters());
+            ds.field("debug", &self.debug());
             ds.finish()
         }
     }
@@ -2386,6 +2409,7 @@ pub mod fb {
         pub network_rules: Vec<NetworkFilterListT>,
         pub unique_domains_hashes: Vec<u64>,
         pub cosmetic_filters: Box<CosmeticFiltersT>,
+        pub debug: bool,
     }
     impl Default for EngineT {
         fn default() -> Self {
@@ -2393,6 +2417,7 @@ pub mod fb {
                 network_rules: Default::default(),
                 unique_domains_hashes: Default::default(),
                 cosmetic_filters: Default::default(),
+                debug: false,
             }
         }
     }
@@ -2414,12 +2439,14 @@ pub mod fb {
                 let x = &self.cosmetic_filters;
                 x.pack(_fbb)
             });
+            let debug = self.debug;
             Engine::create(
                 _fbb,
                 &EngineArgs {
                     network_rules,
                     unique_domains_hashes,
                     cosmetic_filters,
+                    debug,
                 },
             )
         }

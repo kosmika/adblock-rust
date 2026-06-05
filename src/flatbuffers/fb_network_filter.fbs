@@ -124,6 +124,8 @@ table Engine {
   unique_domains_hashes: [uint64] (required);
 
   cosmetic_filters: CosmeticFilters (required);
+
+  debug: bool;
 }
 
 root_type Engine;

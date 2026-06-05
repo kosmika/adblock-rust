@@ -62,7 +62,9 @@ pub(crate) struct NetworkRulesBuilder<'a, 'f> {
     bad_filter_ids: HashSet<Hash>,
 }
 
-impl<'a, 'f> FlatSerialize<'a, EngineFlatBuilder<'a>> for (NetworkFilter<'f>, NetworkFilterDebugData) {
+impl<'a, 'f> FlatSerialize<'a, EngineFlatBuilder<'a>>
+    for (NetworkFilter<'f>, NetworkFilterDebugData)
+{
     type Output = WIPOffset<fb::NetworkFilter<'a>>;
 
     fn serialize(

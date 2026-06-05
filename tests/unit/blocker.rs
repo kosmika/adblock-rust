@@ -93,7 +93,10 @@ mod blocker_tests {
         );
         assert_eq!(
             matched_rule.exception,
-            Some("@@||imdb-video.media-imdb.com^$domain=imdb.com".to_string())
+            Some(
+                "@@||imdb-video.media-imdb.com^$domain=imdb.com (source_index: 0, line_number: 1)"
+                    .to_string()
+            )
         );
     }
 
@@ -129,7 +132,7 @@ mod blocker_tests {
         assert_eq!(
             matched_rule.exception,
             Some(
-                "@@||imdb-video.media-imdb.com^$domain=imdb.com,redirect=noop-0.1s.mp3".to_string()
+                "@@||imdb-video.media-imdb.com^$domain=imdb.com,redirect=noop-0.1s.mp3 (source_index: 0, line_number: 1)".to_string()
             )
         );
     }
