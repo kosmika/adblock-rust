@@ -864,7 +864,7 @@ impl<'a> NetworkFilter<'a> {
             self.modifier_option,
             self.mask,
             self.features_mask,
-            self.filter.string_view().as_deref(),
+            &self.filter,
             self.hostname.as_deref(),
             self.opt_domains.as_ref(),
             self.opt_not_domains.as_ref(),
@@ -1025,11 +1025,32 @@ pub(crate) trait NetworkMatchable {
 // Filter parsing
 // ---------------------------------------------------------------------------
 
+fn hash_str_into(hash: &mut Hash, s: &str) {
+    for c in s.chars() {
+        *hash = hash.wrapping_mul(33) ^ (c as Hash);
+    }
+}
+
+fn hash_filter_part_into(hash: &mut Hash, filter: &FilterPart<'_>) {
+    match filter {
+        FilterPart::Empty => {}
+        FilterPart::Simple(s) => hash_str_into(hash, s.as_ref()),
+        FilterPart::AnyOf(parts) => {
+            for (i, part) in parts.iter().enumerate() {
+                if i > 0 {
+                    *hash = hash.wrapping_mul(33) ^ ('|' as Hash);
+                }
+                hash_str_into(hash, part);
+            }
+        }
+    }
+}
+
 fn compute_filter_id(
     modifier_option: Option<&str>,
     mask: NetworkFilterMask,
     features_mask: NetworkFilterFeaturesMask,
-    filter: Option<&str>,
+    filter: &FilterPart<'_>,
     hostname: Option<&str>,
     opt_domains: Option<&Vec<Hash>>,
     opt_not_domains: Option<&Vec<Hash>>,
@@ -1041,17 +1062,14 @@ fn compute_filter_id(
     hash = hash.wrapping_mul(33) ^ Hash::from(features_mask_bits);
 
     if let Some(s) = modifier_option {
-        let chars = s.chars();
-        for c in chars {
-            hash = hash.wrapping_mul(33) ^ (c as Hash);
-        }
-    };
+        hash_str_into(&mut hash, s);
+    }
 
     if let Some(domains) = opt_domains {
         for d in domains {
             hash = hash.wrapping_mul(33) ^ d;
         }
-    };
+    }
 
     if let Some(domains) = opt_not_domains {
         for d in domains {
@@ -1059,18 +1077,10 @@ fn compute_filter_id(
         }
     }
 
-    if let Some(s) = filter {
-        let chars = s.chars();
-        for c in chars {
-            hash = hash.wrapping_mul(33) ^ (c as Hash);
-        }
-    }
+    hash_filter_part_into(&mut hash, filter);
 
     if let Some(s) = hostname {
-        let chars = s.chars();
-        for c in chars {
-            hash = hash.wrapping_mul(33) ^ (c as Hash);
-        }
+        hash_str_into(&mut hash, s);
     }
 
     hash
