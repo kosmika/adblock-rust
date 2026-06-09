@@ -16,8 +16,8 @@ mod parse_tests {
         script_inject: bool,
     }
 
-    impl From<&CosmeticFilter> for CosmeticFilterBreakdown {
-        fn from(filter: &CosmeticFilter) -> CosmeticFilterBreakdown {
+    impl<'a> From<&CosmeticFilter<'a>> for CosmeticFilterBreakdown {
+        fn from(filter: &CosmeticFilter<'a>) -> CosmeticFilterBreakdown {
             CosmeticFilterBreakdown {
                 entities: filter.entities.as_ref().cloned(),
                 hostnames: filter.hostnames.as_ref().cloned(),
@@ -32,8 +32,8 @@ mod parse_tests {
         }
     }
 
-    impl From<CosmeticFilter> for CosmeticFilterBreakdown {
-        fn from(filter: CosmeticFilter) -> CosmeticFilterBreakdown {
+    impl<'a> From<CosmeticFilter<'a>> for CosmeticFilterBreakdown {
+        fn from(filter: CosmeticFilter<'a>) -> CosmeticFilterBreakdown {
             (&filter).into()
         }
     }
@@ -60,8 +60,8 @@ mod parse_tests {
         Procedural(Vec<CosmeticFilterOperator>),
     }
 
-    impl From<&CosmeticFilter> for SelectorType {
-        fn from(v: &CosmeticFilter) -> Self {
+    impl<'a> From<&CosmeticFilter<'a>> for SelectorType {
+        fn from(v: &CosmeticFilter<'a>) -> Self {
             if let Some(selector) = v.plain_css_selector() {
                 Self::PlainCss(selector.to_string())
             } else {
@@ -70,7 +70,7 @@ mod parse_tests {
         }
     }
 
-    fn parse_cf(rule: &str) -> Result<CosmeticFilter, CosmeticFilterError> {
+    fn parse_cf(rule: &str) -> Result<CosmeticFilter<'_>, CosmeticFilterError> {
         CosmeticFilter::parse(rule, false, Default::default())
     }
 
@@ -929,7 +929,7 @@ mod matching_tests {
         fn matches_str(&self, hostname: &str, domain: &str) -> bool;
     }
 
-    impl MatchByStr for CosmeticFilter {
+    impl<'a> MatchByStr for CosmeticFilter<'a> {
         /// `hostname` and `domain` should be specified as, e.g. "subdomain.domain.com" and
         /// "domain.com", respectively. This function will panic if the specified `domain` is
         /// longer than the specified `hostname`.
@@ -1004,7 +1004,7 @@ mod matching_tests {
         }
     }
 
-    fn parse_cf(rule: &str) -> Result<CosmeticFilter, CosmeticFilterError> {
+    fn parse_cf(rule: &str) -> Result<CosmeticFilter<'_>, CosmeticFilterError> {
         CosmeticFilter::parse(rule, false, Default::default())
     }
 

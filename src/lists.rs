@@ -395,7 +395,7 @@ pub enum FilterType {
 /// Successful result of parsing a single line from a filter list
 pub enum ParsedLine<'a> {
     Network(NetworkFilter<'a>),
-    Cosmetic(CosmeticFilter),
+    Cosmetic(CosmeticFilter<'a>),
 }
 
 impl From<NetworkFilter<'static>> for ParsedLine<'static> {
@@ -404,8 +404,8 @@ impl From<NetworkFilter<'static>> for ParsedLine<'static> {
     }
 }
 
-impl From<CosmeticFilter> for ParsedLine<'static> {
-    fn from(v: CosmeticFilter) -> Self {
+impl<'a> From<CosmeticFilter<'a>> for ParsedLine<'a> {
+    fn from(v: CosmeticFilter<'a>) -> Self {
         ParsedLine::Cosmetic(v)
     }
 }
@@ -518,7 +518,7 @@ pub fn parse_filters<'a>(
     list: impl IntoIterator<Item = &'a str>,
     debug: bool,
     opts: ParseOptions,
-) -> (Vec<NetworkFilter<'a>>, Vec<CosmeticFilter>) {
+) -> (Vec<NetworkFilter<'a>>, Vec<CosmeticFilter<'a>>) {
     let (network_filters, cosmetic_filters): (Vec<_>, Vec<_>) = list
         .into_iter()
         .filter_map(|line| match parse_filter(line, debug, opts) {

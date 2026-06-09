@@ -116,13 +116,14 @@ bitflags::bitflags! {
 
 /// Struct representing a parsed cosmetic filter rule.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CosmeticFilter {
+pub struct CosmeticFilter<'a> {
     pub entities: Option<Vec<Hash>>,
     pub hostnames: Option<Vec<Hash>>,
     pub mask: CosmeticFilterMask,
     pub not_entities: Option<Vec<Hash>>,
     pub not_hostnames: Option<Vec<Hash>>,
-    pub raw_line: Option<Box<String>>,
+    #[serde(borrow)]
+    pub raw_line: Option<&'a str>,
     pub selector: Vec<CosmeticFilterOperator>,
     pub action: Option<CosmeticFilterAction>,
     pub permission: PermissionMask,
@@ -168,7 +169,7 @@ struct CosmeticFilterLocations {
     not_hostnames: Option<Vec<Hash>>,
 }
 
-impl CosmeticFilter {
+impl<'a> CosmeticFilter<'a> {
     #[inline]
     pub(crate) fn locations_before_sharp(
         line: &str,
@@ -355,10 +356,10 @@ impl CosmeticFilter {
     /// will be reported in the resulting `CosmeticFilter` struct as well. Use `permission` to
     /// manage the filter's access to scriptlet resources for `+js(...)` injections.
     pub fn parse(
-        line: &str,
+        line: &'a str,
         debug: bool,
         permission: PermissionMask,
-    ) -> Result<CosmeticFilter, CosmeticFilterError> {
+    ) -> Result<CosmeticFilter<'a>, CosmeticFilterError> {
         let mut mask = CosmeticFilterMask::NONE;
         if let Some(sharp_index) = find_char(b'#', line.as_bytes()) {
             let after_sharp_index = sharp_index + 1;
@@ -459,11 +460,7 @@ impl CosmeticFilter {
                 mask,
                 not_entities,
                 not_hostnames,
-                raw_line: if debug {
-                    Some(Box::new(String::from(line)))
-                } else {
-                    None
-                },
+                raw_line: if debug { Some(line) } else { None },
                 selector,
                 action,
                 permission,
@@ -498,7 +495,7 @@ impl CosmeticFilter {
     /// 'hidden' generic rule if one applies.
     ///
     /// Note that this behavior is not applied to script injections or rules with actions.
-    pub fn hidden_generic_rule(&self) -> Option<CosmeticFilter> {
+    pub fn hidden_generic_rule(&self) -> Option<CosmeticFilter<'a>> {
         if self.hostnames.is_some() || self.entities.is_some() {
             None
         } else if (self.not_hostnames.is_some() || self.not_entities.is_some())

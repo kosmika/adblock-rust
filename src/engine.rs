@@ -103,9 +103,9 @@ impl Engine {
 
     /// A helper for tests and benchmarks. Use [`Engine::new_with_filter_set`] instead.
     #[doc(hidden)]
-    pub fn new_with_parsed_rules(
-        network_filters: Vec<NetworkFilter>,
-        cosmetic_filters: Vec<CosmeticFilter>,
+    pub fn new_with_parsed_rules<'f>(
+        network_filters: Vec<NetworkFilter<'f>>,
+        cosmetic_filters: Vec<CosmeticFilter<'f>>,
         optimize: bool,
     ) -> Self {
         let mut builder = EngineFlatBuilder::default();

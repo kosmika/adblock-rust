@@ -588,10 +588,10 @@ impl TryFrom<NetworkFilter<'_>> for CbRuleEquivalent {
     }
 }
 
-impl TryFrom<CosmeticFilter> for CbRule {
+impl<'a> TryFrom<CosmeticFilter<'a>> for CbRule {
     type Error = CbRuleCreationFailure;
 
-    fn try_from(v: CosmeticFilter) -> Result<Self, Self::Error> {
+    fn try_from(v: CosmeticFilter<'a>) -> Result<Self, Self::Error> {
         use crate::filters::cosmetic::{
             CosmeticFilterLocationType as LocationType, CosmeticFilterMask,
         };
@@ -603,7 +603,7 @@ impl TryFrom<CosmeticFilter> for CbRule {
             return Err(CbRuleCreationFailure::ScriptletInjectionsNotSupported);
         }
 
-        if let Some(raw_line) = v.raw_line.as_deref() {
+        if let Some(raw_line) = v.raw_line {
             let mut hostnames_vec = vec![];
             let mut not_hostnames_vec = vec![];
 

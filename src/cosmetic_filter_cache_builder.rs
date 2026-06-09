@@ -77,7 +77,7 @@ pub(crate) struct CosmeticFilterCacheBuilder<'a> {
 }
 
 impl<'a> CosmeticFilterCacheBuilder<'a> {
-    pub fn add_filter(&mut self, rule: CosmeticFilter, builder: &mut EngineFlatBuilder<'a>) {
+    pub fn add_filter(&mut self, rule: CosmeticFilter<'_>, builder: &mut EngineFlatBuilder<'a>) {
         if rule.has_hostname_constraint() {
             if let Some(generic_rule) = rule.hidden_generic_rule() {
                 self.add_generic_filter(generic_rule);
@@ -89,7 +89,7 @@ impl<'a> CosmeticFilterCacheBuilder<'a> {
     }
 
     /// Add a filter, assuming it has already been determined to be a generic rule
-    fn add_generic_filter(&mut self, rule: CosmeticFilter) {
+    fn add_generic_filter(&mut self, rule: CosmeticFilter<'_>) {
         let selector = match rule.plain_css_selector() {
             Some(s) => s.to_string(),
             None => {
@@ -130,7 +130,11 @@ impl<'a> CosmeticFilterCacheBuilder<'a> {
         }
     }
 
-    fn store_hostname_rule(&mut self, rule: CosmeticFilter, builder: &mut EngineFlatBuilder<'a>) {
+    fn store_hostname_rule(
+        &mut self,
+        rule: CosmeticFilter<'_>,
+        builder: &mut EngineFlatBuilder<'a>,
+    ) {
         use SpecificFilterType::*;
 
         let unhide = rule.mask.contains(CosmeticFilterMask::UNHIDE);
