@@ -22,7 +22,7 @@ pub struct CheckResultDebugData {
 
 /// Holds relevant information from a single matchin gnetwork filter rule as a result of querying a
 /// [NetworkFilterList] for a given request.
-pub struct CheckResult {
+pub(crate) struct CheckResult {
     pub filter_mask: NetworkFilterMask,
     pub modifier_option: Option<String>,
     pub debug_data: Option<CheckResultDebugData>,
