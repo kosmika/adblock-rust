@@ -182,10 +182,6 @@ impl Engine {
                 .title
                 .as_ref()
                 .map(|v| builder.create_string(v.as_str()));
-            let filename = list_source
-                .filename
-                .as_ref()
-                .map(|v| builder.create_string(v.as_str()));
 
             let invalid_lines = if set.debug {
                 Some(FlatSerialize::serialize(invalid_lines, &mut builder))
@@ -198,7 +194,6 @@ impl Engine {
                 &fb::SourceInfoArgs {
                     title,
                     homepage,
-                    filename,
                     network_filter_count,
                     cosmetic_filter_count,
                     parse_error,
