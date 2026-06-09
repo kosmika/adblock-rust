@@ -2166,11 +2166,10 @@ pub mod fb {
     impl<'a> SourceInfo<'a> {
         pub const VT_TITLE: flatbuffers::VOffsetT = 4;
         pub const VT_HOMEPAGE: flatbuffers::VOffsetT = 6;
-        pub const VT_FILENAME: flatbuffers::VOffsetT = 8;
-        pub const VT_NETWORK_FILTER_COUNT: flatbuffers::VOffsetT = 10;
-        pub const VT_COSMETIC_FILTER_COUNT: flatbuffers::VOffsetT = 12;
-        pub const VT_PARSE_ERROR: flatbuffers::VOffsetT = 14;
-        pub const VT_INVALID_LINES: flatbuffers::VOffsetT = 16;
+        pub const VT_NETWORK_FILTER_COUNT: flatbuffers::VOffsetT = 8;
+        pub const VT_COSMETIC_FILTER_COUNT: flatbuffers::VOffsetT = 10;
+        pub const VT_PARSE_ERROR: flatbuffers::VOffsetT = 12;
+        pub const VT_INVALID_LINES: flatbuffers::VOffsetT = 14;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2193,9 +2192,6 @@ pub mod fb {
             builder.add_parse_error(args.parse_error);
             builder.add_cosmetic_filter_count(args.cosmetic_filter_count);
             builder.add_network_filter_count(args.network_filter_count);
-            if let Some(x) = args.filename {
-                builder.add_filename(x);
-            }
             if let Some(x) = args.homepage {
                 builder.add_homepage(x);
             }
@@ -2208,7 +2204,6 @@ pub mod fb {
         pub fn unpack(&self) -> SourceInfoT {
             let title = self.title().map(|x| x.to_string());
             let homepage = self.homepage().map(|x| x.to_string());
-            let filename = self.filename().map(|x| x.to_string());
             let network_filter_count = self.network_filter_count();
             let cosmetic_filter_count = self.cosmetic_filter_count();
             let parse_error = self.parse_error();
@@ -2218,7 +2213,6 @@ pub mod fb {
             SourceInfoT {
                 title,
                 homepage,
-                filename,
                 network_filter_count,
                 cosmetic_filter_count,
                 parse_error,
@@ -2244,16 +2238,6 @@ pub mod fb {
             unsafe {
                 self._tab
                     .get::<flatbuffers::ForwardsUOffset<&str>>(SourceInfo::VT_HOMEPAGE, None)
-            }
-        }
-        #[inline]
-        pub fn filename(&self) -> Option<&'a str> {
-            // Safety:
-            // Created from valid Table for this object
-            // which contains a valid value in this slot
-            unsafe {
-                self._tab
-                    .get::<flatbuffers::ForwardsUOffset<&str>>(SourceInfo::VT_FILENAME, None)
             }
         }
         #[inline]
@@ -2318,11 +2302,6 @@ pub mod fb {
                     Self::VT_HOMEPAGE,
                     false,
                 )?
-                .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                    "filename",
-                    Self::VT_FILENAME,
-                    false,
-                )?
                 .visit_field::<i32>("network_filter_count", Self::VT_NETWORK_FILTER_COUNT, false)?
                 .visit_field::<i32>(
                     "cosmetic_filter_count",
@@ -2340,7 +2319,6 @@ pub mod fb {
     pub struct SourceInfoArgs<'a> {
         pub title: Option<flatbuffers::WIPOffset<&'a str>>,
         pub homepage: Option<flatbuffers::WIPOffset<&'a str>>,
-        pub filename: Option<flatbuffers::WIPOffset<&'a str>>,
         pub network_filter_count: i32,
         pub cosmetic_filter_count: i32,
         pub parse_error: i32,
@@ -2354,7 +2332,6 @@ pub mod fb {
             SourceInfoArgs {
                 title: None,
                 homepage: None,
-                filename: None,
                 network_filter_count: 0,
                 cosmetic_filter_count: 0,
                 parse_error: 0,
@@ -2377,11 +2354,6 @@ pub mod fb {
         pub fn add_homepage(&mut self, homepage: flatbuffers::WIPOffset<&'b str>) {
             self.fbb_
                 .push_slot_always::<flatbuffers::WIPOffset<_>>(SourceInfo::VT_HOMEPAGE, homepage);
-        }
-        #[inline]
-        pub fn add_filename(&mut self, filename: flatbuffers::WIPOffset<&'b str>) {
-            self.fbb_
-                .push_slot_always::<flatbuffers::WIPOffset<_>>(SourceInfo::VT_FILENAME, filename);
         }
         #[inline]
         pub fn add_network_filter_count(&mut self, network_filter_count: i32) {
@@ -2438,7 +2410,6 @@ pub mod fb {
             let mut ds = f.debug_struct("SourceInfo");
             ds.field("title", &self.title());
             ds.field("homepage", &self.homepage());
-            ds.field("filename", &self.filename());
             ds.field("network_filter_count", &self.network_filter_count());
             ds.field("cosmetic_filter_count", &self.cosmetic_filter_count());
             ds.field("parse_error", &self.parse_error());
@@ -2451,7 +2422,6 @@ pub mod fb {
     pub struct SourceInfoT {
         pub title: Option<String>,
         pub homepage: Option<String>,
-        pub filename: Option<String>,
         pub network_filter_count: i32,
         pub cosmetic_filter_count: i32,
         pub parse_error: i32,
@@ -2462,7 +2432,6 @@ pub mod fb {
             Self {
                 title: None,
                 homepage: None,
-                filename: None,
                 network_filter_count: 0,
                 cosmetic_filter_count: 0,
                 parse_error: 0,
@@ -2477,7 +2446,6 @@ pub mod fb {
         ) -> flatbuffers::WIPOffset<SourceInfo<'b>> {
             let title = self.title.as_ref().map(|x| _fbb.create_string(x));
             let homepage = self.homepage.as_ref().map(|x| _fbb.create_string(x));
-            let filename = self.filename.as_ref().map(|x| _fbb.create_string(x));
             let network_filter_count = self.network_filter_count;
             let cosmetic_filter_count = self.cosmetic_filter_count;
             let parse_error = self.parse_error;
@@ -2490,7 +2458,6 @@ pub mod fb {
                 &SourceInfoArgs {
                     title,
                     homepage,
-                    filename,
                     network_filter_count,
                     cosmetic_filter_count,
                     parse_error,

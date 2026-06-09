@@ -74,7 +74,6 @@ pub(crate) struct ListSource {
     pub(crate) list_text: String,
     pub(crate) parse_options: ParseOptions,
     pub(crate) metadata: FilterListMetadata,
-    pub(crate) filename: Option<String>,
 }
 
 /// Manages a set of rules to be added to an [`crate::Engine`].
@@ -229,7 +228,6 @@ impl FilterSet {
             list_text,
             parse_options: opts,
             metadata: metadata.clone(),
-            filename: None, // TODO: add API to pass filename
         });
         metadata
     }
@@ -251,7 +249,6 @@ impl FilterSet {
             list_text,
             parse_options: opts,
             metadata: FilterListMetadata::default(),
-            filename: None,
         });
     }
 

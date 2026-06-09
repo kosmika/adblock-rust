@@ -116,7 +116,6 @@ table CosmeticFilters {
 table SourceInfo {
   title: string;
   homepage: string;
-  filename: string;
   network_filter_count: int32;
   cosmetic_filter_count: int32;
   parse_error: int32;
