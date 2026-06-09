@@ -151,7 +151,7 @@ describe('Engine.check — basic blocking', () => {
             'https://ads.example.com/t.js', 'https://pub.com', 'script', true,
         );
         assert.equal(result.matched, true);
-        assert.equal(result.filter, '||ads.example.com^');
+        assert.equal(result.filter, '||ads.example.com^ (source_index: 0, line_number: 0)');
     });
 
     it('throws for an invalid URL', () => {
@@ -184,7 +184,7 @@ describe('Engine.check — exception rules', () => {
         );
         assert.equal(result.matched, false);
         assert.equal(typeof result.exception, 'string');
-        assert.equal(result.exception, '@@||ads.example.com^$domain=publisher.com');
+        assert.equal(result.exception, '@@||ads.example.com^$domain=publisher.com (source_index: 0, line_number: 1)');
     });
 
     it('$important overrides exception rules', () => {
@@ -196,7 +196,7 @@ describe('Engine.check — exception rules', () => {
         );
         assert.equal(result.matched, true);
         assert.equal(result.important, true);
-        assert.equal(result.filter, '||ads.example.com^$important');
+        assert.equal(result.filter, '||ads.example.com^$important (source_index: 0, line_number: 0)');
     });
 });
 
@@ -321,7 +321,7 @@ describe('Engine.check — redirect rules', () => {
             'https://ads.example.com/t.js', 'https://pub.com', 'script', true,
         );
         assert.equal(result.matched, true);
-        assert.equal(result.filter, '||ads.example.com^$script,redirect=noopjs');
+        assert.equal(result.filter, '||ads.example.com^$script,redirect=noopjs (source_index: 0, line_number: 0)');
         assert.ok(result.redirect.length > 0);
     });
 
@@ -333,7 +333,7 @@ describe('Engine.check — redirect rules', () => {
             'https://ads.example.com/t.js', 'https://pub.com', 'script', true,
         );
         assert.equal(result.matched, true);
-        assert.equal(result.filter, '||ads.example.com^');
+        assert.equal(result.filter, '||ads.example.com^ (source_index: 0, line_number: 0)');
         assert.ok(result.redirect == null);
     });
 });
@@ -389,7 +389,7 @@ describe('Engine.check — exception rules with tags', () => {
             'https://ads.example.com/t.js', 'https://pub.com', 'script', true,
         );
         assert.equal(after.matched, false);
-        assert.equal(after.exception, '@@||ads.example.com^$tag=unbreak');
+        assert.equal(after.exception, '@@||ads.example.com^$tag=unbreak (source_index: 0, line_number: 1)');
     });
 });
 
