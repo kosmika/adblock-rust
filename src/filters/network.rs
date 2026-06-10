@@ -2,6 +2,8 @@
 //! modification.
 
 use memchr::memchr as find_char;
+use rustc_hash::FxHasher;
+use std::hash::Hasher;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -1025,25 +1027,10 @@ pub(crate) trait NetworkMatchable {
 // Filter parsing
 // ---------------------------------------------------------------------------
 
-fn hash_str_into(hash: &mut Hash, s: &str) {
-    for c in s.chars() {
-        *hash = hash.wrapping_mul(33) ^ (c as Hash);
-    }
-}
-
-fn hash_filter_part_into(hash: &mut Hash, filter: &FilterPart<'_>) {
-    match filter {
-        FilterPart::Empty => {}
-        FilterPart::Simple(s) => hash_str_into(hash, s.as_ref()),
-        FilterPart::AnyOf(parts) => {
-            for (i, part) in parts.iter().enumerate() {
-                if i > 0 {
-                    *hash = hash.wrapping_mul(33) ^ ('|' as Hash);
-                }
-                hash_str_into(hash, part);
-            }
-        }
-    }
+#[inline]
+fn write_str_to_hasher(hasher: &mut impl Hasher, s: &str) {
+    hasher.write_usize(s.len());
+    hasher.write(s.as_bytes());
 }
 
 fn compute_filter_id(
@@ -1055,35 +1042,46 @@ fn compute_filter_id(
     opt_domains: Option<&Vec<Hash>>,
     opt_not_domains: Option<&Vec<Hash>>,
 ) -> Hash {
-    let mut hash: Hash = (5408 * 33) ^ Hash::from(mask.bits());
+    let mut hasher = FxHasher::default();
+
+    hasher.write_u64(u64::from(mask.bits()));
 
     // Exclude BAD_FILTER from the hash
     let features_mask_bits = features_mask.bits() & !NetworkFilterFeaturesMask::BAD_FILTER.bits();
-    hash = hash.wrapping_mul(33) ^ Hash::from(features_mask_bits);
+    hasher.write_u64(u64::from(features_mask_bits));
 
     if let Some(s) = modifier_option {
-        hash_str_into(&mut hash, s);
+        write_str_to_hasher(&mut hasher, s);
     }
 
     if let Some(domains) = opt_domains {
         for d in domains {
-            hash = hash.wrapping_mul(33) ^ d;
+            hasher.write_u64(*d);
         }
     }
 
     if let Some(domains) = opt_not_domains {
         for d in domains {
-            hash = hash.wrapping_mul(33) ^ d;
+            hasher.write_u64(*d);
         }
     }
 
-    hash_filter_part_into(&mut hash, filter);
-
-    if let Some(s) = hostname {
-        hash_str_into(&mut hash, s);
+    match filter {
+        FilterPart::Empty => {}
+        FilterPart::Simple(s) => write_str_to_hasher(&mut hasher, s.as_ref()),
+        FilterPart::AnyOf(parts) => {
+            hasher.write_u64(parts.len() as u64);
+            for part in parts {
+                write_str_to_hasher(&mut hasher, part);
+            }
+        }
     }
 
-    hash
+    if let Some(s) = hostname {
+        write_str_to_hasher(&mut hasher, s);
+    }
+
+    hasher.finish()
 }
 
 /// Check if the sub-string contained between the indices start and end is a
