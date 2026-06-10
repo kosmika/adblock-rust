@@ -2,11 +2,11 @@
 //! modification.
 
 use memchr::memchr as find_char;
-use rustc_hash::FxHasher;
-use std::hash::Hasher;
 use regex::Regex;
+use rustc_hash::FxHasher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::hash::Hasher;
 use std::sync::LazyLock;
 use thiserror::Error;
 
