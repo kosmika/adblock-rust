@@ -287,7 +287,7 @@ impl From<&request::RequestType> for NetworkFilterMask {
 pub enum FilterPart<'a> {
     Empty,
     Simple(Cow<'a, str>),
-    AnyOf(Vec<String>),
+    AnyOf(Vec<Cow<'a, str>>),
 }
 
 #[derive(Debug, PartialEq)]
