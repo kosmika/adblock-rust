@@ -67,6 +67,8 @@ pub enum NetworkFilterError {
     NegatedAll,
     #[error("generichide without exception")]
     GenericHideWithoutException,
+    #[error("method with generichide")]
+    MethodWithGenerichide,
     #[error("empty redirection")]
     EmptyRedirection,
     #[error("empty removeparam")]
@@ -857,6 +859,12 @@ impl<'a> NetworkFilter<'a> {
                 mask |= NetworkFilterMask::FROM_ANY_METHODS;
             }
             mask &= !method_mask_negative;
+        }
+
+        if features_mask.contains(NetworkFilterFeaturesMask::GENERIC_HIDE)
+            && mask.intersects(NetworkFilterMask::FROM_ANY_METHODS)
+        {
+            return Err(NetworkFilterError::MethodWithGenerichide);
         }
 
         Ok(NetworkFilter {
