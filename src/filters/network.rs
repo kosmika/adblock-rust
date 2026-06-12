@@ -560,6 +560,9 @@ impl<'a> NetworkFilter<'a> {
                             opt_not_domains = Some(opt_not_domains_array);
                         }
                     }
+                    NetworkFilterOption::To(values) => {
+                        let _ = values;
+                    }
                     NetworkFilterOption::Badfilter => {
                         features_mask.set(NetworkFilterFeaturesMask::BAD_FILTER, true)
                     }

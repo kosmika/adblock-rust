@@ -731,6 +731,39 @@ mod parse_tests {
     }
 
     #[test]
+    fn parses_to() {
+        {
+            let filter =
+                NetworkFilter::parse("||foo.com$to=bar.com", true, Default::default()).unwrap();
+            assert_eq!(filter.opt_domains, None);
+        }
+        {
+            let filter = NetworkFilter::parse(
+                "||foo.com$to=google.*|gstatic.com",
+                true,
+                Default::default(),
+            )
+            .unwrap();
+            assert_eq!(filter.opt_domains, None);
+        }
+        {
+            let filter =
+                NetworkFilter::parse("||foo.com$to=~example.it", true, Default::default()).unwrap();
+            assert_eq!(filter.opt_domains, None);
+        }
+        {
+            let filter = NetworkFilter::parse("||foo.com$to=/^foo/", true, Default::default());
+            assert_eq!(filter.err(), Some(NetworkFilterError::NoSupportedDomains));
+        }
+        {
+            let filter =
+                NetworkFilter::parse("||foo.com$to=/^foo/|bar.com", true, Default::default())
+                    .unwrap();
+            assert_eq!(filter.opt_domains, None);
+        }
+    }
+
+    #[test]
     fn parses_redirects() {
         // parses redirect
         {
