@@ -18,6 +18,7 @@ mod tests {
             url,
             schema,
             hostname,
+            domain,
             source_hostname,
             third_party,
             url.to_string(),
@@ -146,6 +147,38 @@ mod tests {
             tokens.as_slice(),
             tokenize(&["https", "subdomain", "example", "com", "ad"], &[0]).as_slice()
         )
+    }
+
+    #[test]
+    fn destination_hostname_hashes_works() {
+        let request = build_request(
+            "script",
+            "https://cdn.gstatic.com/foo.js",
+            "https",
+            "cdn.gstatic.com",
+            "gstatic.com",
+            "example.com",
+            "example.com",
+        );
+        assert_eq!(
+            request.hostname_hashes.as_ref().unwrap().as_slice(),
+            tokenize(&["cdn.gstatic.com", "gstatic.com", "com"], &[]).as_slice(),
+        );
+    }
+
+    #[test]
+    fn destination_entity_hashes_works() {
+        let request = build_request(
+            "script",
+            "https://www.google.co.uk/foo.js",
+            "https",
+            "www.google.co.uk",
+            "google.co.uk",
+            "example.com",
+            "example.com",
+        );
+        let entity_hashes = request.entity_hashes.as_ref().unwrap();
+        assert!(entity_hashes.contains(&utils::fast_hash("google")));
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 use thiserror::Error;
 
+use crate::filters::cosmetic::get_entity_hashes_from_labels;
 use crate::url_parser;
 use crate::utils;
 
@@ -101,6 +102,8 @@ pub struct Request {
     pub url: String,
     pub hostname: String,
     pub source_hostname_hashes: Option<Vec<utils::Hash>>,
+    pub(crate) hostname_hashes: Option<Vec<utils::Hash>>,
+    pub(crate) entity_hashes: Option<Vec<utils::Hash>>,
 
     pub(crate) url_lower_cased: String,
     pub(crate) request_tokens: Vec<utils::Hash>,
@@ -155,12 +158,27 @@ impl Request {
         })
     }
 
+    fn suffix_hostname_hashes(hostname: &str) -> Option<Vec<utils::Hash>> {
+        if hostname.is_empty() {
+            return None;
+        }
+        let mut hashes = Vec::with_capacity(4);
+        hashes.push(utils::fast_hash(hostname));
+        for (i, c) in hostname.char_indices() {
+            if c == '.' && i + 1 < hostname.len() {
+                hashes.push(utils::fast_hash(&hostname[i + 1..]));
+            }
+        }
+        Some(hashes)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn from_detailed_parameters(
         raw_type: &str,
         url: &str,
         schema: &str,
         hostname: &str,
+        domain: &str,
         source_hostname: &str,
         third_party: bool,
         original_url: String,
@@ -190,17 +208,17 @@ impl Request {
             }
         }
 
-        let source_hostname_hashes = if !source_hostname.is_empty() {
-            let mut hashes = Vec::with_capacity(4);
-            hashes.push(utils::fast_hash(source_hostname));
-            for (i, c) in source_hostname.char_indices() {
-                if c == '.' && i + 1 < source_hostname.len() {
-                    hashes.push(utils::fast_hash(&source_hostname[i + 1..]));
-                }
-            }
-            Some(hashes)
-        } else {
+        let source_hostname_hashes = Self::suffix_hostname_hashes(source_hostname);
+        let hostname_hashes = Self::suffix_hostname_hashes(hostname);
+        let entity_hashes = if hostname.is_empty() {
             None
+        } else {
+            let hashes = get_entity_hashes_from_labels(hostname, domain);
+            if hashes.is_empty() {
+                None
+            } else {
+                Some(hashes)
+            }
         };
 
         let url_lower_cased = url.to_ascii_lowercase();
@@ -213,6 +231,8 @@ impl Request {
             hostname: hostname.to_owned(),
             request_tokens: calculate_tokens(&url_lower_cased),
             source_hostname_hashes,
+            hostname_hashes,
+            entity_hashes,
             is_third_party: third_party,
             is_http,
             is_https,
@@ -240,6 +260,7 @@ impl Request {
                     &parsed_url.url,
                     parsed_url.schema(),
                     parsed_url.hostname(),
+                    parsed_url.domain(),
                     parsed_source.hostname(),
                     third_party,
                     url.to_string(),
@@ -251,6 +272,7 @@ impl Request {
                     &parsed_url.url,
                     parsed_url.schema(),
                     parsed_url.hostname(),
+                    parsed_url.domain(),
                     "",
                     true,
                     url.to_string(),
@@ -275,12 +297,15 @@ impl Request {
     ) -> Request {
         let splitter = memchr::memchr(b':', url.as_bytes()).unwrap_or(0);
         let schema: &str = &url[..splitter];
+        let (domain_start, domain_end) = url_parser::get_host_domain(hostname);
+        let domain = &hostname[domain_start..domain_end];
 
         Request::from_detailed_parameters(
             request_type,
             url,
             schema,
             hostname,
+            domain,
             source_hostname,
             third_party,
             url.to_string(),
