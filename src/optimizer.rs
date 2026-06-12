@@ -1,12 +1,54 @@
 use crate::filters::network::{
-    FilterPart, NetworkFilter, NetworkFilterMask, NetworkFilterMaskHelper,
+    FilterPart, FilterTokens, NetworkFilter, NetworkFilterMask, NetworkFilterMaskHelper,
 };
+use crate::utils::{ShortHash, TokensBuffer};
 use itertools::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+#[derive(Default)]
+pub(crate) struct Optimizer<'a> {
+    filters: Vec<NetworkFilter<'a>>,
+}
+
+impl<'a> Optimizer<'a> {
+    pub fn is_optimizable(&self, filter: &NetworkFilter<'a>, multi_tokens: &FilterTokens) -> bool {
+        is_filter_optimizable_by_patterns(filter) && *multi_tokens == FilterTokens::Empty
+    }
+
+    pub fn add_filter(
+        &mut self,
+        filter: NetworkFilter<'a>,
+        multi_tokens: FilterTokens,
+        _tokens: &TokensBuffer,
+    ) {
+        debug_assert!(
+            multi_tokens == FilterTokens::Empty,
+            "multi_tokens must be empty"
+        );
+        self.filters.push(filter);
+    }
+
+    pub fn retain(&mut self, predicate: impl FnMut(&NetworkFilter<'a>) -> bool) {
+        self.filters.retain(predicate);
+    }
+
+    pub fn into_optimized_iter(self) -> impl Iterator<Item = (NetworkFilter<'a>, ShortHash)> {
+        let simple_pattern_group = SimplePatternGroup {};
+        let (mut optimized, unfused) = apply_optimisation(&simple_pattern_group, self.filters);
+
+        // Append whatever is still left unfused
+        optimized.extend(unfused);
+
+        // Re-sort the list, now that the order has been perturbed
+        optimized.sort_by_key(|f| f.id);
+
+        optimized.into_iter().map(|f| (f, 0))
+    }
+}
+
 trait Optimization {
-    fn fusion<'a>(&self, filters: &[NetworkFilter<'a>]) -> NetworkFilter<'a>;
+    fn fusion<'a>(&self, filters: Vec<NetworkFilter<'a>>) -> NetworkFilter<'a>;
     fn group_by_criteria(&self, filter: &NetworkFilter<'_>) -> String;
     fn select(&self, filter: &NetworkFilter<'_>) -> bool;
 }
@@ -17,28 +59,6 @@ pub fn is_filter_optimizable_by_patterns(filter: &NetworkFilter<'_>) -> bool {
         && !filter.is_hostname_anchor()
         && !filter.is_redirect()
         && !filter.is_csp()
-}
-
-/// Fuse `NetworkFilter`s together by applying optimizations sequentially.
-pub fn optimize<'a>(filters: Vec<NetworkFilter<'a>>) -> Vec<NetworkFilter<'a>> {
-    let mut optimized: Vec<NetworkFilter<'a>> = Vec::new();
-
-    /*
-    let union_domain_group = UnionDomainGroup {};
-    let (fused, unfused) = apply_optimisation(&union_domain_group, filters);
-    optimized.extend(fused);
-    */
-
-    let simple_pattern_group = SimplePatternGroup {};
-    let (fused, unfused) = apply_optimisation(&simple_pattern_group, filters);
-    optimized.extend(fused);
-
-    // Append whatever is still left unfused
-    optimized.extend(unfused);
-
-    // Re-sort the list, now that the order has been perturbed
-    optimized.sort_by_key(|f| f.id);
-    optimized
 }
 
 fn apply_optimisation<'a, T: Optimization>(
@@ -64,7 +84,7 @@ fn apply_optimisation<'a, T: Optimization>(
     for (_, group) in to_fuse {
         if group.len() > 1 {
             // println!("Fusing {} filters together", group.len());
-            fused.push(optimization.fusion(group.as_slice()));
+            fused.push(optimization.fusion(group));
         } else {
             group.into_iter().for_each(|f| negative.push(f));
         }
@@ -131,6 +151,8 @@ impl Optimization for SimplePatternGroup {
             } else {
                 filter.filter = FilterPart::AnyOf(flat_patterns)
             }
+
+            filter.raw_line = Some(Cow::Owned(combined_raw_line));
 
             filter
         }

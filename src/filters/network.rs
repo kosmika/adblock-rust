@@ -959,7 +959,11 @@ impl<'a> NetworkFilter<'a> {
                 tokens_buffer.push(utils::fast_hash("https"));
             }
 
-            FilterTokens::Other
+            if tokens_buffer.is_empty() {
+                FilterTokens::Empty
+            } else {
+                FilterTokens::Other
+            }
         }
     }
 

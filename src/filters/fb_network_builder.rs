@@ -1,6 +1,6 @@
 //! Structures to store network filters to flatbuffer
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use flatbuffers::WIPOffset;
 
@@ -12,7 +12,7 @@ use crate::utils::TokensBuffer;
 use crate::filters::network::NetworkFilterMaskHelper;
 use crate::flatbuffers::containers::flat_multimap::FlatMultiMapBuilder;
 use crate::flatbuffers::containers::flat_serialize::{FlatBuilder, FlatSerialize};
-use crate::optimizer;
+use crate::optimizer::Optimizer;
 use crate::utils::{to_short_hash, Hash, ShortHash};
 
 use super::flat::fb;
@@ -34,16 +34,16 @@ struct NetworkFilterFlatEntry<'a> {
     id: Hash,
 }
 
-struct NetworkFilterListBuilder<'a, 'f> {
+struct NetworkFilterListBuilder<'a> {
     flat_map_builder: FlatMultiMapBuilder<ShortHash, NetworkFilterFlatEntry<'a>>,
     token_frequencies: TokenSelector,
-    generic_filters_to_optimize: Vec<NetworkFilter<'f>>,
+    optimizer: Optimizer<'a>,
     tokens_buffer: TokensBuffer,
     optimize: bool,
 }
 
-pub(crate) struct NetworkRulesBuilder<'a, 'f> {
-    lists: Vec<NetworkFilterListBuilder<'a, 'f>>,
+pub(crate) struct NetworkRulesBuilder<'a> {
+    lists: Vec<NetworkFilterListBuilder<'a>>,
     bad_filter_ids: HashSet<Hash>,
 }
 
@@ -125,12 +125,12 @@ impl<'f, 'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilter<'f> {
     }
 }
 
-impl<'a, 'f> NetworkFilterListBuilder<'a, 'f> {
+impl<'a> NetworkFilterListBuilder<'a> {
     fn new(optimize: bool) -> Self {
         Self {
             flat_map_builder: FlatMultiMapBuilder::with_capacity(1024),
             token_frequencies: TokenSelector::new(1024),
-            generic_filters_to_optimize: Vec::new(),
+            optimizer: Optimizer::default(),
             tokens_buffer: TokensBuffer::default(),
             optimize,
         }
@@ -138,16 +138,16 @@ impl<'a, 'f> NetworkFilterListBuilder<'a, 'f> {
 
     fn add_filter(
         &mut self,
-        network_filter: NetworkFilter<'f>,
+        network_filter: NetworkFilter<'a>,
         builder: &mut EngineFlatBuilder<'a>,
     ) {
         let multi_tokens = network_filter.get_tokens(&mut self.tokens_buffer);
-        let id = network_filter.get_id();
 
         let mut process_filter =
-            |network_filter: NetworkFilter<'f>,
+            |network_filter: NetworkFilter<'a>,
              multi_tokens: FilterTokens,
              builder: &mut EngineFlatBuilder<'a>| {
+                let id = network_filter.get_id();
                 // Serialize now (even if it matches to a bad filter later);
                 // Although store the id for later bad-filter pruning.
                 let filter = FlatSerialize::serialize(network_filter, builder);
@@ -183,18 +183,20 @@ impl<'a, 'f> NetworkFilterListBuilder<'a, 'f> {
         // serialized/optimizable branches share no token logic.
 
         if self.optimize
-            && optimizer::is_filter_optimizable_by_patterns(&network_filter)
-            && multi_tokens == FilterTokens::Empty
+            && self
+                .optimizer
+                .is_optimizable(&network_filter, &multi_tokens)
         {
             // Defer serialization to the optimizer
-            self.generic_filters_to_optimize.push(network_filter);
+            self.optimizer
+                .add_filter(network_filter, multi_tokens, &self.tokens_buffer);
         } else {
             process_filter(network_filter, multi_tokens, builder);
         }
     }
 }
 
-impl<'a, 'f> NetworkRulesBuilder<'a, 'f> {
+impl<'a> NetworkRulesBuilder<'a> {
     pub fn new(optimize: bool) -> Self {
         let lists = (0..NetworkFilterListId::Size as usize)
             .map(|list_id| {
@@ -209,7 +211,7 @@ impl<'a, 'f> NetworkRulesBuilder<'a, 'f> {
         }
     }
 
-    pub fn add_filter(&mut self, filter: NetworkFilter<'f>, builder: &mut EngineFlatBuilder<'a>) {
+    pub fn add_filter(&mut self, filter: NetworkFilter<'a>, builder: &mut EngineFlatBuilder<'a>) {
         if filter.is_badfilter() {
             // Note: `get_id()` doesn't include BAD_FILTER bit.
             self.bad_filter_ids.insert(filter.get_id());
@@ -246,7 +248,7 @@ impl<'a, 'f> NetworkRulesBuilder<'a, 'f> {
 
     fn add_filter_internal(
         &mut self,
-        network_filter: NetworkFilter<'f>,
+        network_filter: NetworkFilter<'a>,
         list_id: NetworkFilterListId,
         builder: &mut EngineFlatBuilder<'a>,
     ) {
@@ -265,7 +267,7 @@ impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkFilterFlatEntry<'a>
     }
 }
 
-impl<'a, 'f> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkRulesBuilder<'a, 'f> {
+impl<'a> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkRulesBuilder<'a> {
     type Output =
         WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<fb::NetworkFilterList<'a>>>>;
 
@@ -273,19 +275,15 @@ impl<'a, 'f> FlatSerialize<'a, EngineFlatBuilder<'a>> for NetworkRulesBuilder<'a
         let mut serialized_lists = vec![];
 
         for mut rule_list in value.lists {
-            if !rule_list.generic_filters_to_optimize.is_empty() {
-                // Sort entries for deterministic iteration order.
-                let mut optimizable_entries: Vec<_> = rule_list.generic_filters_to_optimize;
-                optimizable_entries.retain(|f| !value.bad_filter_ids.contains(&f.get_id()));
-                let optimized = optimizer::optimize(optimizable_entries);
-
-                    for filter in optimized {
-                        let id = filter.get_id();
-                        let filter = FlatSerialize::serialize(filter, builder);
-                        rule_list
-                            .flat_map_builder
-                            .insert(token, NetworkFilterFlatEntry { filter, id });
-                    }
+            rule_list
+                .optimizer
+                .retain(|filter| !value.bad_filter_ids.contains(&filter.get_id()));
+            for (filter, token) in rule_list.optimizer.into_optimized_iter() {
+                let id = filter.get_id();
+                let filter = FlatSerialize::serialize(filter, builder);
+                rule_list
+                    .flat_map_builder
+                    .insert(token, NetworkFilterFlatEntry { filter, id });
             }
 
             // Prune already-serialized entries that were cancelled by a $badfilter.

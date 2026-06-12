@@ -80,7 +80,7 @@ mod optimization_tests_pattern_group {
                 .iter()
                 .for_each(|f| assert!(optimization.select(f), "Expected rule to be selected"));
 
-            let fused = optimization.fusion(&filters);
+            let fused = optimization.fusion(filters);
 
             assert!(!fused.is_regex(), "Expected rule to not be a regex");
             assert_eq!(
@@ -378,7 +378,7 @@ mod optimization_tests_pattern_group {
             .iter()
             .for_each(|f| assert!(optimization.select(f), "Expected rule to be selected"));
 
-        let fused = optimization.fusion(&filters);
+        let fused = optimization.fusion(filters);
 
         assert!(!fused.is_regex(), "Expected rule to not be a regex");
         assert_eq!(
