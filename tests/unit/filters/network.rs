@@ -736,6 +736,13 @@ mod parse_tests {
             let filter =
                 NetworkFilter::parse("||foo.com$to=bar.com", true, Default::default()).unwrap();
             assert_eq!(filter.opt_domains, None);
+            assert_eq!(
+                filter.opt_to_domains,
+                Some(vec![utils::fast_hash("bar.com")])
+            );
+            assert_eq!(filter.opt_not_to_domains, None);
+            assert_eq!(filter.opt_to_entities, None);
+            assert_eq!(filter.opt_not_to_entities, None);
         }
         {
             let filter = NetworkFilter::parse(
@@ -744,12 +751,25 @@ mod parse_tests {
                 Default::default(),
             )
             .unwrap();
-            assert_eq!(filter.opt_domains, None);
+            assert_eq!(
+                filter.opt_to_domains,
+                Some(vec![utils::fast_hash("gstatic.com")])
+            );
+            assert_eq!(
+                filter.opt_to_entities,
+                Some(vec![utils::fast_hash("google")])
+            );
+            assert_eq!(filter.opt_not_to_domains, None);
+            assert_eq!(filter.opt_not_to_entities, None);
         }
         {
             let filter =
                 NetworkFilter::parse("||foo.com$to=~example.it", true, Default::default()).unwrap();
-            assert_eq!(filter.opt_domains, None);
+            assert_eq!(filter.opt_to_domains, None);
+            assert_eq!(
+                filter.opt_not_to_domains,
+                Some(vec![utils::fast_hash("example.it")])
+            );
         }
         {
             let filter = NetworkFilter::parse("||foo.com$to=/^foo/", true, Default::default());
@@ -759,7 +779,10 @@ mod parse_tests {
             let filter =
                 NetworkFilter::parse("||foo.com$to=/^foo/|bar.com", true, Default::default())
                     .unwrap();
-            assert_eq!(filter.opt_domains, None);
+            assert_eq!(
+                filter.opt_to_domains,
+                Some(vec![utils::fast_hash("bar.com")])
+            );
         }
     }
 
