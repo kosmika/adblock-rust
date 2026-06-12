@@ -21,6 +21,7 @@ mod tests {
             source_hostname,
             third_party,
             url.to_string(),
+            None,
         )
     }
 
@@ -153,6 +154,7 @@ mod tests {
             "https://subdomain.example.com/ad",
             "https://example.com/",
             "document",
+            "",
         )
         .unwrap();
         assert!(parsed.is_https);
@@ -177,14 +179,43 @@ mod tests {
             "subdomain.example.com/ad",
             "https://example.com/",
             "document",
+            "",
         );
         assert_eq!(bad_url.err(), Some(RequestError::HostnameParseError));
     }
 
     #[test]
+    fn parse_method_works() {
+        assert_eq!(
+            Request::new("https://example.com", "https://example.com", "xhr", "get")
+                .unwrap()
+                .method,
+            Some(RequestMethod::Get),
+        );
+        assert_eq!(
+            Request::new("https://example.com", "https://example.com", "xhr", "PUT")
+                .unwrap()
+                .method,
+            Some(RequestMethod::Put),
+        );
+        assert_eq!(
+            Request::new("https://example.com", "https://example.com", "xhr", "TRACE")
+                .unwrap()
+                .method,
+            Some(RequestMethod::Other),
+        );
+        assert_eq!(
+            Request::new("https://example.com", "https://example.com", "xhr", "")
+                .unwrap()
+                .method,
+            None,
+        );
+    }
+
+    #[test]
     fn fuzzing_errors() {
         {
-            let parsed = Request::new("https://߶", "https://example.com", "other");
+            let parsed = Request::new("https://߶", "https://example.com", "other", "");
             assert!(parsed.is_ok());
         }
         {
@@ -192,6 +223,7 @@ mod tests {
                 &format!("https://{}", std::str::from_utf8(&[9, 9, 64]).unwrap()),
                 "https://example.com",
                 "other",
+                "",
             );
             assert!(parsed.is_err());
         }

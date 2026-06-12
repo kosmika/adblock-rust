@@ -258,6 +258,27 @@ describe('Engine.check — type-specific rules', () => {
         assert.equal(engine.check('https://ads.example.com/api', 'https://pub.com', 'xmlhttprequest'), true);
         assert.equal(engine.check('https://ads.example.com/api', 'https://pub.com', 'image'), false);
     });
+
+    it('$method=post blocks only POST requests', () => {
+        const fs = new FilterSet();
+        fs.addFilters('||api.example.com^$xhr,method=post');
+        const engine = new Engine(fs, true);
+        const url = 'https://api.example.com/collect';
+        const source = 'https://pub.com';
+        assert.equal(engine.check(url, source, 'xhr', 'post'), true);
+        assert.equal(engine.check(url, source, 'xhr', 'get'), false);
+        assert.equal(engine.check(url, source, 'xhr'), false);
+    });
+
+    it('debug=true remains backward compatible as 4th boolean arg', () => {
+        const fs = new FilterSet(true);
+        fs.addFilters('||api.example.com^$xhr,method=post');
+        const engine = new Engine(fs, true);
+        const result = engine.check(
+            'https://api.example.com/collect', 'https://pub.com', 'xhr', true,
+        );
+        assert.equal(result.matched, false);
+    });
 });
 
 // ---------------------------------------------------------------------------

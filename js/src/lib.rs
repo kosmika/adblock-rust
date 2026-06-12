@@ -187,17 +187,47 @@ fn engine_check(mut cx: FunctionContext) -> JsResult<JsValue> {
     let source_url: String = cx.argument::<JsString>(2)?.value(&mut cx);
     let request_type: String = cx.argument::<JsString>(3)?.value(&mut cx);
 
-    let debug = match cx.argument_opt(4) {
+    // Optional trailing args:
+    // - legacy: `(debug: boolean)`
+    // - new: `(method: string, debug?: boolean)` — empty method string means unspecified
+    let (method, debug) = match cx.argument_opt(4) {
+        None => (String::new(), false),
         Some(arg) => {
-            // Throw if the argument exists and it cannot be downcasted to a boolean
-            arg.downcast::<JsBoolean, _>(&mut cx)
-                .or_throw(&mut cx)?
-                .value(&mut cx)
+            if arg.is_a::<JsNull, _>(&mut cx) || arg.is_a::<JsUndefined, _>(&mut cx) {
+                let debug = match cx.argument_opt(5) {
+                    Some(debug_arg) => debug_arg
+                        .downcast::<JsBoolean, _>(&mut cx)
+                        .or_throw(&mut cx)?
+                        .value(&mut cx),
+                    None => false,
+                };
+                (String::new(), debug)
+            } else if let Ok(debug) = arg.downcast::<JsBoolean, _>(&mut cx) {
+                console_warn(
+                    &mut cx,
+                    "Engine.check: passing debug as the 4th boolean argument is deprecated; \
+                     pass an HTTP method string as the 4th argument (use \"\" if unspecified) \
+                     and debug as an optional 5th boolean instead.",
+                )?;
+                (String::new(), debug.value(&mut cx))
+            } else if let Ok(method) = arg.downcast::<JsString, _>(&mut cx) {
+                let debug = match cx.argument_opt(5) {
+                    Some(debug_arg) => debug_arg
+                        .downcast::<JsBoolean, _>(&mut cx)
+                        .or_throw(&mut cx)?
+                        .value(&mut cx),
+                    None => false,
+                };
+                (method.value(&mut cx), debug)
+            } else {
+                cx.throw_error(
+                    "expected boolean (debug), string (method), null, or undefined as 4th argument",
+                )?
+            }
         }
-        None => false,
     };
 
-    let request = match adblock::request::Request::new(&url, &source_url, &request_type) {
+    let request = match adblock::request::Request::new(&url, &source_url, &request_type, &method) {
         Ok(r) => r,
         Err(e) => cx.throw_error(e.to_string())?,
     };
@@ -329,7 +359,20 @@ fn validate_request(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let url: String = cx.argument::<JsString>(0)?.value(&mut cx);
     let source_url: String = cx.argument::<JsString>(1)?.value(&mut cx);
     let request_type: String = cx.argument::<JsString>(2)?.value(&mut cx);
-    let request_ok = adblock::request::Request::new(&url, &source_url, &request_type).is_ok();
+    let method = match cx.argument_opt(3) {
+        None => String::new(),
+        Some(arg) => {
+            if arg.is_a::<JsNull, _>(&mut cx) || arg.is_a::<JsUndefined, _>(&mut cx) {
+                String::new()
+            } else {
+                arg.downcast::<JsString, _>(&mut cx)
+                    .or_throw(&mut cx)?
+                    .value(&mut cx)
+            }
+        }
+    };
+    let request_ok =
+        adblock::request::Request::new(&url, &source_url, &request_type, &method).is_ok();
 
     Ok(cx.boolean(request_ok))
 }

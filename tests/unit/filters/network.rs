@@ -35,6 +35,9 @@ mod parse_tests {
         from_websocket: bool,
         from_xml_http_request: bool,
         from_document: bool,
+        from_get: bool,
+        from_head: bool,
+        from_post: bool,
         match_case: bool,
         third_party: bool,
     }
@@ -76,6 +79,9 @@ mod parse_tests {
                 from_websocket: filter.mask.contains(NetworkFilterMask::FROM_WEBSOCKET),
                 from_xml_http_request: filter.mask.contains(NetworkFilterMask::FROM_XMLHTTPREQUEST),
                 from_document: filter.mask.contains(NetworkFilterMask::FROM_DOCUMENT),
+                from_get: filter.mask.contains(NetworkFilterMask::FROM_GET),
+                from_head: filter.mask.contains(NetworkFilterMask::FROM_HEAD),
+                from_post: filter.mask.contains(NetworkFilterMask::FROM_POST),
                 match_case: filter.match_case(),
                 third_party: filter.third_party(),
             }
@@ -115,9 +121,23 @@ mod parse_tests {
             from_websocket: true,
             from_xml_http_request: true,
             from_document: false,
+            from_get: false,
+            from_head: false,
+            from_post: false,
             match_case: false,
             third_party: true,
         }
+    }
+
+    fn foo_method_breakdown(get: bool, head: bool, post: bool) -> NetworkFilterBreakdown {
+        let mut expected = default_network_filter_breakdown();
+        expected.hostname = Some(String::from("foo"));
+        expected.is_hostname_anchor = true;
+        expected.is_plain = true;
+        expected.from_get = get;
+        expected.from_head = head;
+        expected.from_post = post;
+        expected
     }
 
     #[test]
@@ -1249,5 +1269,97 @@ mod parse_tests {
             tokens_buffer.as_slice(),
             &[utils::fast_hash("some"), utils::fast_hash("primewire")]
         );
+    }
+
+    #[test]
+    fn handles_method_options() {
+        const CASES: &[(&str, bool, bool, bool)] = &[
+            ("||foo$method=post", false, false, true),
+            ("||foo$method=post|get", true, false, true),
+            ("||foo$method=head|get", true, true, false),
+            ("||foo$method=~get", false, true, true),
+            ("||foo$method=POST", false, false, true),
+            ("||foo$method=post|put", false, false, true),
+        ];
+
+        for (rule, get, head, post) in CASES {
+            let filter = NetworkFilter::parse(rule, true, Default::default()).unwrap();
+            assert_eq!(
+                foo_method_breakdown(*get, *head, *post),
+                NetworkFilterBreakdown::from(&filter),
+                "rule: {rule}",
+            );
+        }
+
+        const RULES: &[&str] = &[
+            "||lemonde.fr/*?s=$xhr,method=post",
+            "||perplexity.ai/rest/metrics/collect^$xhr,1p,method=post",
+            "||apmplus.volces.com/monitor_web/collect$xhr,method=post",
+            "@@||www.realclear*/esm/assets/js/analytics/chartbeat.js?v=$xhr,1p,method=get,domain=com|org",
+            "||pagead2.googlesyndication.com^$3p,xhr,method=head,redirect-rule=noop.js,domain=photopea.com",
+            "||void.nicopr.fr/rec$method=POST",
+        ];
+
+        for filter_text in RULES {
+            assert!(
+                NetworkFilter::parse(filter_text, true, Default::default()).is_ok(),
+                "failed to parse: {filter_text}"
+            );
+        }
+
+        {
+            let filter = NetworkFilter::parse(
+                "||perplexity.ai/rest/metrics/collect^$xhr,1p,method=post",
+                true,
+                Default::default(),
+            )
+            .unwrap();
+            assert!(filter.mask.contains(NetworkFilterMask::FROM_POST));
+            assert!(filter.mask.contains(NetworkFilterMask::FROM_XMLHTTPREQUEST));
+            assert!(!filter.mask.contains(NetworkFilterMask::FROM_NETWORK_TYPES));
+            assert!(filter.first_party());
+            assert!(!filter.third_party());
+        }
+
+        {
+            let filter = NetworkFilter::parse(
+                "@@*$xhr,method=head|get,domain=app.axenthost.com,3p",
+                true,
+                Default::default(),
+            )
+            .unwrap();
+            assert!(filter.is_exception());
+            assert!(filter.mask.contains(NetworkFilterMask::FROM_HEAD));
+            assert!(filter.mask.contains(NetworkFilterMask::FROM_GET));
+            assert!(!filter.mask.contains(NetworkFilterMask::FROM_POST));
+        }
+
+        const INVALID_RULES: &[&str] = &[
+            "||foo$method=put",
+            "||foo$method=connect|delete",
+            "||foo$method=",
+            "||foo$~method=post",
+        ];
+
+        for filter_text in INVALID_RULES {
+            assert!(
+                NetworkFilter::parse(filter_text, true, Default::default()).is_err(),
+                "expected parse error: {filter_text}"
+            );
+        }
+
+        assert!(NetworkFilter::parse("@@||foo^$generichide", true, Default::default()).is_ok());
+
+        for filter_text in [
+            "@@||foo^$generichide,method=post",
+            "@@||foo^$ghide,method=get",
+            "@@||foo^$generichide,method=head|get",
+        ] {
+            assert_eq!(
+                NetworkFilter::parse(filter_text, true, Default::default()).err(),
+                Some(NetworkFilterError::MethodWithGenerichide),
+                "expected MethodWithGenerichide: {filter_text}",
+            );
+        }
     }
 }
