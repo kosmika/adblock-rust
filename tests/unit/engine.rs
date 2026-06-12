@@ -239,7 +239,7 @@ mod tests {
             );
         }
         let expected_hash: u64 = if cfg!(feature = "css-validation") {
-            2977715961033378463
+            14819081262113618355
         } else {
             16823792549182954096
         };

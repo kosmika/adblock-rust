@@ -160,8 +160,9 @@ mod tests {
             "example.com",
             "example.com",
         );
+        assert!(!request.destination_hashes_initialized());
         assert_eq!(
-            request.hostname_hashes.as_ref().unwrap().as_slice(),
+            request.destination_suffix_hashes().unwrap(),
             tokenize(&["cdn.gstatic.com", "gstatic.com", "com"], &[]).as_slice(),
         );
     }
@@ -177,8 +178,26 @@ mod tests {
             "example.com",
             "example.com",
         );
-        let entity_hashes = request.entity_hashes.as_ref().unwrap();
+        assert!(!request.destination_hashes_initialized());
+        let entity_hashes = request.destination_entity_hashes().unwrap();
         assert!(entity_hashes.contains(&utils::fast_hash("google")));
+    }
+
+    #[test]
+    fn destination_suffix_hashes_shared_with_source() {
+        let request = build_request(
+            "script",
+            "https://example.com/foo.js",
+            "https",
+            "example.com",
+            "example.com",
+            "example.com",
+            "example.com",
+        );
+        assert_eq!(
+            request.destination_suffix_hashes().unwrap(),
+            request.source_hostname_hashes.as_ref().unwrap().as_slice(),
+        );
     }
 
     #[test]

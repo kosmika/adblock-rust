@@ -397,6 +397,12 @@ mod match_tests {
         let opt_not_to_domains = map_opt_hashes(filter.opt_not_to_domains.clone(), &mut mapping);
         let opt_to_entities = map_opt_hashes(filter.opt_to_entities.clone(), &mut mapping);
         let opt_not_to_entities = map_opt_hashes(filter.opt_not_to_entities.clone(), &mut mapping);
+        let to_options = crate::filters::fb_network::ToOptionsFlags::from_bucket_parts(
+            opt_to_domains.is_some(),
+            opt_not_to_domains.is_some(),
+            opt_to_entities.is_some(),
+            opt_not_to_entities.is_some(),
+        );
 
         super::super::check_options(filter.mask, request)
             && super::super::check_included_domains_mapped(
@@ -410,16 +416,20 @@ mod match_tests {
                 &mapping,
             )
             && super::super::check_included_to_options_mapped(
+                to_options,
                 opt_to_domains.as_deref(),
                 opt_to_entities.as_deref(),
                 request,
                 &mapping,
+                crate::filters::filter_data_context::ToRuleCapability::all(),
             )
             && super::super::check_excluded_to_options_mapped(
+                to_options,
                 opt_not_to_domains.as_deref(),
                 opt_not_to_entities.as_deref(),
                 request,
                 &mapping,
+                crate::filters::filter_data_context::ToRuleCapability::all(),
             )
     }
 

@@ -7,6 +7,8 @@
 
 use memchr::memmem;
 
+use crate::filters::fb_network::ToOptionsFlags;
+use crate::filters::filter_data_context::ToRuleCapability;
 use crate::filters::network::{NetworkFilterMask, NetworkFilterMaskHelper};
 use crate::regex_manager::RegexManager;
 use crate::request;
@@ -490,33 +492,53 @@ pub fn check_excluded_domains_mapped(
 
 #[inline]
 pub fn check_included_to_options_mapped(
+    to_options: ToOptionsFlags,
     opt_to_domains: Option<&[u32]>,
     opt_to_entities: Option<&[u32]>,
     request: &request::Request,
     mapping: &HashMap<Hash, u32>,
+    to_capability: ToRuleCapability,
 ) -> bool {
+    if !to_options.any() {
+        return true;
+    }
+
     let plain = opt_to_domains.filter(|domains| !domains.is_empty());
     let entity = opt_to_entities.filter(|domains| !domains.is_empty());
+
+    let destination_suffix_hashes =
+        if to_options.needs_plain() && to_capability.has_plain && plain.is_some() {
+            request.destination_suffix_hashes()
+        } else {
+            None
+        };
+    let destination_entity_hashes =
+        if to_options.needs_entity() && to_capability.has_entity && entity.is_some() {
+            request.destination_entity_hashes()
+        } else {
+            None
+        };
+
     match (plain, entity) {
         (None, None) => true,
         (Some(included), None) => check_included_domains_mapped_with_hashes(
             Some(included),
-            request.hostname_hashes.as_deref(),
+            destination_suffix_hashes,
             mapping,
         ),
         (None, Some(included)) => check_included_domains_mapped_with_hashes(
             Some(included),
-            request.entity_hashes.as_deref(),
+            destination_entity_hashes,
             mapping,
         ),
         (Some(included_plain), Some(included_entity)) => {
             check_included_domains_mapped_with_hashes(
                 Some(included_plain),
-                request.hostname_hashes.as_deref(),
+                destination_suffix_hashes,
                 mapping,
             ) || check_included_domains_mapped_with_hashes(
                 Some(included_entity),
-                request.entity_hashes.as_deref(),
+                destination_entity_hashes,
                 mapping,
             )
         }
@@ -525,20 +547,35 @@ pub fn check_included_to_options_mapped(
 
 #[inline]
 pub fn check_excluded_to_options_mapped(
+    to_options: ToOptionsFlags,
     opt_not_to_domains: Option<&[u32]>,
     opt_not_to_entities: Option<&[u32]>,
     request: &request::Request,
     mapping: &HashMap<Hash, u32>,
+    to_capability: ToRuleCapability,
 ) -> bool {
-    check_excluded_domains_mapped_with_hashes(
-        opt_not_to_domains,
-        request.hostname_hashes.as_deref(),
-        mapping,
-    ) && check_excluded_domains_mapped_with_hashes(
-        opt_not_to_entities,
-        request.entity_hashes.as_deref(),
-        mapping,
-    )
+    if !to_options.any() {
+        return true;
+    }
+
+    let plain = opt_not_to_domains.filter(|domains| !domains.is_empty());
+    let entity = opt_not_to_entities.filter(|domains| !domains.is_empty());
+
+    let destination_suffix_hashes =
+        if to_options.needs_plain() && to_capability.has_plain && plain.is_some() {
+            request.destination_suffix_hashes()
+        } else {
+            None
+        };
+    let destination_entity_hashes =
+        if to_options.needs_entity() && to_capability.has_entity && entity.is_some() {
+            request.destination_entity_hashes()
+        } else {
+            None
+        };
+
+    check_excluded_domains_mapped_with_hashes(plain, destination_suffix_hashes, mapping)
+        && check_excluded_domains_mapped_with_hashes(entity, destination_entity_hashes, mapping)
 }
 
 #[cfg(test)]

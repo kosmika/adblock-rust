@@ -89,6 +89,103 @@ impl ExactSizeIterator for FlatPatternsIterator<'_> {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ToOptionsFlags(u8);
+
+impl ToOptionsFlags {
+    const PLAIN_INC: u8 = 1 << 0;
+    const PLAIN_EXC: u8 = 1 << 1;
+    const ENTITY_INC: u8 = 1 << 2;
+    const ENTITY_EXC: u8 = 1 << 3;
+
+    #[inline(always)]
+    pub fn any(self) -> bool {
+        self.0 != 0
+    }
+
+    #[inline(always)]
+    fn has_plain_inc(self) -> bool {
+        self.0 & Self::PLAIN_INC != 0
+    }
+
+    #[inline(always)]
+    fn has_plain_exc(self) -> bool {
+        self.0 & Self::PLAIN_EXC != 0
+    }
+
+    #[inline(always)]
+    fn has_entity_inc(self) -> bool {
+        self.0 & Self::ENTITY_INC != 0
+    }
+
+    #[inline(always)]
+    fn has_entity_exc(self) -> bool {
+        self.0 & Self::ENTITY_EXC != 0
+    }
+
+    #[inline(always)]
+    pub(crate) fn needs_plain(self) -> bool {
+        self.0 & (Self::PLAIN_INC | Self::PLAIN_EXC) != 0
+    }
+
+    #[inline(always)]
+    pub(crate) fn needs_entity(self) -> bool {
+        self.0 & (Self::ENTITY_INC | Self::ENTITY_EXC) != 0
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_bucket_parts(
+        include_plain: bool,
+        exclude_plain: bool,
+        include_entity: bool,
+        exclude_entity: bool,
+    ) -> Self {
+        let mut flags = 0u8;
+        if include_plain {
+            flags |= Self::PLAIN_INC;
+        }
+        if exclude_plain {
+            flags |= Self::PLAIN_EXC;
+        }
+        if include_entity {
+            flags |= Self::ENTITY_INC;
+        }
+        if exclude_entity {
+            flags |= Self::ENTITY_EXC;
+        }
+        Self(flags)
+    }
+
+    fn from_filter(filter: &fb::NetworkFilter<'_>) -> Self {
+        let mut flags = 0u8;
+        if filter
+            .opt_to_domains()
+            .is_some_and(|data| !fb_vector_to_slice(data).is_empty())
+        {
+            flags |= Self::PLAIN_INC;
+        }
+        if filter
+            .opt_not_to_domains()
+            .is_some_and(|data| !fb_vector_to_slice(data).is_empty())
+        {
+            flags |= Self::PLAIN_EXC;
+        }
+        if filter
+            .opt_to_entities()
+            .is_some_and(|data| !fb_vector_to_slice(data).is_empty())
+        {
+            flags |= Self::ENTITY_INC;
+        }
+        if filter
+            .opt_not_to_entities()
+            .is_some_and(|data| !fb_vector_to_slice(data).is_empty())
+        {
+            flags |= Self::ENTITY_EXC;
+        }
+        Self(flags)
+    }
+}
+
 /// Internal implementation of [NetworkFilter] that is compatible with flatbuffers.
 pub(crate) struct FlatNetworkFilter<'a> {
     key: u64,
@@ -96,6 +193,7 @@ pub(crate) struct FlatNetworkFilter<'a> {
     fb_filter: &'a fb::NetworkFilter<'a>,
 
     pub(crate) mask: NetworkFilterMask,
+    to_options: ToOptionsFlags,
 }
 
 impl<'a> FlatNetworkFilter<'a> {
@@ -112,6 +210,7 @@ impl<'a> FlatNetworkFilter<'a> {
             key,
             fb_filter: filter,
             mask: NetworkFilterMask::from_bits_retain(filter.mask()),
+            to_options: ToOptionsFlags::from_filter(filter),
             filter_data_context,
         }
     }
@@ -222,21 +321,45 @@ impl NetworkMatchable for FlatNetworkFilter<'_> {
         ) {
             return false;
         }
-        if !check_included_to_options_mapped(
-            self.include_to_domains(),
-            self.include_to_entities(),
-            request,
-            &self.filter_data_context.unique_domains_hashes_map,
-        ) {
-            return false;
-        }
-        if !check_excluded_to_options_mapped(
-            self.exclude_to_domains(),
-            self.exclude_to_entities(),
-            request,
-            &self.filter_data_context.unique_domains_hashes_map,
-        ) {
-            return false;
+        if self.to_options.any() {
+            let mapping = &self.filter_data_context.unique_domains_hashes_map;
+            let to_capability = self.filter_data_context.to_rule_capability();
+            if !check_included_to_options_mapped(
+                self.to_options,
+                if self.to_options.has_plain_inc() {
+                    self.include_to_domains()
+                } else {
+                    None
+                },
+                if self.to_options.has_entity_inc() {
+                    self.include_to_entities()
+                } else {
+                    None
+                },
+                request,
+                mapping,
+                to_capability,
+            ) {
+                return false;
+            }
+            if !check_excluded_to_options_mapped(
+                self.to_options,
+                if self.to_options.has_plain_exc() {
+                    self.exclude_to_domains()
+                } else {
+                    None
+                },
+                if self.to_options.has_entity_exc() {
+                    self.exclude_to_entities()
+                } else {
+                    None
+                },
+                request,
+                mapping,
+                to_capability,
+            ) {
+                return false;
+            }
         }
         check_pattern(
             self.mask,
