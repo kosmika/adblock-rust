@@ -141,6 +141,34 @@ impl<'a> FlatNetworkFilter<'a> {
     }
 
     #[inline(always)]
+    pub fn include_to_domains(&self) -> Option<&[u32]> {
+        self.fb_filter
+            .opt_to_domains()
+            .map(|data| fb_vector_to_slice(data))
+    }
+
+    #[inline(always)]
+    pub fn exclude_to_domains(&self) -> Option<&[u32]> {
+        self.fb_filter
+            .opt_not_to_domains()
+            .map(|data| fb_vector_to_slice(data))
+    }
+
+    #[inline(always)]
+    pub fn include_to_entities(&self) -> Option<&[u32]> {
+        self.fb_filter
+            .opt_to_entities()
+            .map(|data| fb_vector_to_slice(data))
+    }
+
+    #[inline(always)]
+    pub fn exclude_to_entities(&self) -> Option<&[u32]> {
+        self.fb_filter
+            .opt_not_to_entities()
+            .map(|data| fb_vector_to_slice(data))
+    }
+
+    #[inline(always)]
     pub fn hostname(&self) -> Option<&'a str> {
         if self.mask.is_hostname_anchor() {
             self.fb_filter.hostname()
@@ -173,7 +201,8 @@ impl NetworkFilterMaskHelper for FlatNetworkFilter<'_> {
 impl NetworkMatchable for FlatNetworkFilter<'_> {
     fn matches(&self, request: &Request, regex_manager: &mut RegexManager) -> bool {
         use crate::filters::network_matchers::{
-            check_excluded_domains_mapped, check_included_domains_mapped, check_options,
+            check_excluded_domains_mapped, check_excluded_to_options_mapped,
+            check_included_domains_mapped, check_included_to_options_mapped, check_options,
             check_pattern,
         };
         if !check_options(self.mask, request) {
@@ -188,6 +217,22 @@ impl NetworkMatchable for FlatNetworkFilter<'_> {
         }
         if !check_excluded_domains_mapped(
             self.exclude_domains(),
+            request,
+            &self.filter_data_context.unique_domains_hashes_map,
+        ) {
+            return false;
+        }
+        if !check_included_to_options_mapped(
+            self.include_to_domains(),
+            self.include_to_entities(),
+            request,
+            &self.filter_data_context.unique_domains_hashes_map,
+        ) {
+            return false;
+        }
+        if !check_excluded_to_options_mapped(
+            self.exclude_to_domains(),
+            self.exclude_to_entities(),
             request,
             &self.filter_data_context.unique_domains_hashes_map,
         ) {
