@@ -26,7 +26,7 @@ exclude = [
 addr = { version = "0.15", default-features = false, features = ["psl"], optional = true }
 url = "2.5"
 percent-encoding = "2.1"
-regex = "1.12.3"
+fancy-regex = "0.14.0"
 bitflags = { version = "2.10.0", features = ["serde"] }
 itertools = "0.14"
 idna = "1.0.3"

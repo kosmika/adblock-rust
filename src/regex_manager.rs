@@ -4,10 +4,7 @@
 
 use crate::filters::network::{NetworkFilterMask, NetworkFilterMaskHelper};
 
-use regex::{
-    bytes::Regex as BytesRegex, bytes::RegexBuilder as BytesRegexBuilder,
-    bytes::RegexSet as BytesRegexSet, bytes::RegexSetBuilder as BytesRegexSetBuilder, Regex,
-};
+use fancy_regex::{Error, Regex};
 use std::sync::LazyLock;
 
 use std::collections::HashMap;
@@ -67,10 +64,9 @@ pub struct RegexDebugEntry {
 
 #[derive(Debug, Clone)]
 pub enum CompiledRegex {
-    Compiled(BytesRegex),
-    CompiledSet(BytesRegexSet),
+    Compiled(Regex),
     MatchAll,
-    RegexParsingError(regex::Error),
+    RegexParsingError(Error),
 }
 
 impl CompiledRegex {
@@ -78,12 +74,7 @@ impl CompiledRegex {
         match &self {
             CompiledRegex::MatchAll => true, // simple case for matching everything, e.g. for empty filter
             CompiledRegex::RegexParsingError(_e) => false, // no match if regex didn't even compile
-            CompiledRegex::Compiled(r) => r.is_match(pattern.as_bytes()),
-            CompiledRegex::CompiledSet(r) => {
-                // let matches: Vec<_> = r.matches(pattern).into_iter().collect();
-                // println!("Matching {} against RegexSet: {:?}", pattern, matches);
-                r.is_match(pattern.as_bytes())
-            }
+            CompiledRegex::Compiled(r) => r.is_match(pattern).unwrap_or(false),
         }
     }
 }
@@ -94,7 +85,6 @@ impl fmt::Display for CompiledRegex {
             CompiledRegex::MatchAll => write!(f, ".*"), // simple case for matching everything, e.g. for empty filter
             CompiledRegex::RegexParsingError(_e) => write!(f, "ERROR"), // no match if regex didn't even compile
             CompiledRegex::Compiled(r) => write!(f, "{}", r.as_str()),
-            CompiledRegex::CompiledSet(r) => write!(f, "{}", r.patterns().join(" | ")),
         }
     }
 }
@@ -161,6 +151,32 @@ where
     )
 }
 
+fn compile_network_regex(pattern: &str) -> Result<Regex, Error> {
+    Regex::new(pattern)
+}
+
+fn compile_network_regex_from_parts(patterns: &[String]) -> Result<Regex, Error> {
+    let combined = patterns
+        .iter()
+        .map(|p| format!("(?:{p})"))
+        .collect::<Vec<_>>()
+        .join("|");
+    compile_network_regex(&combined)
+}
+
+/// Compiles already-escaped regex patterns into a single alternation.
+#[cfg(test)]
+pub(crate) fn compile_regex_alternation<'a, I>(patterns: I) -> CompiledRegex
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let patterns: Vec<String> = patterns.into_iter().map(String::from).collect();
+    match compile_network_regex_from_parts(&patterns) {
+        Ok(compiled) => CompiledRegex::Compiled(compiled),
+        Err(e) => CompiledRegex::RegexParsingError(e),
+    }
+}
+
 /// Compiles a filter pattern to a regex. This is only performed *lazily* for
 /// filters containing at least a * or ^ symbol. Because Regexes are expansive,
 /// we try to convert some patterns to plain filters.
@@ -216,21 +232,14 @@ where
 
     if escaped_patterns.is_empty() {
         CompiledRegex::MatchAll
-    } else if escaped_patterns.len() == 1 {
-        let pattern = &escaped_patterns[0];
-        match BytesRegexBuilder::new(pattern).unicode(false).build() {
-            Ok(compiled) => CompiledRegex::Compiled(compiled),
-            Err(e) => {
-                // println!("Regex parsing failed ({:?})", e);
-                CompiledRegex::RegexParsingError(e)
-            }
-        }
     } else {
-        match BytesRegexSetBuilder::new(escaped_patterns)
-            .unicode(false)
-            .build()
-        {
-            Ok(compiled) => CompiledRegex::CompiledSet(compiled),
+        let result = if escaped_patterns.len() == 1 {
+            compile_network_regex(&escaped_patterns[0])
+        } else {
+            compile_network_regex_from_parts(&escaped_patterns)
+        };
+        match result {
+            Ok(compiled) => CompiledRegex::Compiled(compiled),
             Err(e) => CompiledRegex::RegexParsingError(e),
         }
     }
@@ -316,7 +325,7 @@ impl RegexManager {
     pub fn discard_regex(&mut self, regex_id: u64) {
         self.map
             .iter_mut()
-            .filter(|(k, _)| { **k } == regex_id)
+            .filter(|(k, _)| **k == regex_id)
             .for_each(|(_, v)| {
                 v.regex = None;
             });

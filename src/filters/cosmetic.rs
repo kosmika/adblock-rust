@@ -619,12 +619,12 @@ mod css_validation {
         selector: &str,
         accept_abp_selectors: bool,
     ) -> Result<Vec<CosmeticFilterOperator>, CosmeticFilterError> {
-        use regex::Regex;
+        use fancy_regex::{Regex, RegexBuilder};
         use std::sync::LazyLock;
         static RE_SIMPLE_SELECTOR: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"^[#.]?[A-Za-z_][\w-]*$").unwrap());
 
-        if RE_SIMPLE_SELECTOR.is_match(selector) {
+        if RE_SIMPLE_SELECTOR.is_match(selector).unwrap_or(false) {
             return Ok(vec![CosmeticFilterOperator::CssSelector(
                 selector.to_string(),
             )]);
@@ -830,7 +830,7 @@ mod css_validation {
     }
 
     pub fn is_valid_css_style(style: &str) -> bool {
-        use regex::{Regex, RegexBuilder};
+        use fancy_regex::{Regex, RegexBuilder};
         use std::sync::LazyLock;
         static RE_INVALID_DIRECTIVE: LazyLock<Regex> = LazyLock::new(|| {
             RegexBuilder::new(r"image-set\(|url\(|\\|\/\*")
@@ -839,7 +839,7 @@ mod css_validation {
                 .unwrap()
         });
 
-        if RE_INVALID_DIRECTIVE.is_match(style) {
+        if RE_INVALID_DIRECTIVE.is_match(style).unwrap_or(false) {
             return false;
         }
         true
@@ -1164,7 +1164,7 @@ mod css_validation {
                 NonTSPseudoClass::MatchesCss(a) => {
                     Some(CosmeticFilterOperator::MatchesCss(a.to_owned()))
                 }
-                NonTSPseudoClass::MatchesCssBefore(a) => {
+                NonTSPseudoClass::MatchesCssBefore  (a) => {
                     Some(CosmeticFilterOperator::MatchesCssBefore(a.to_owned()))
                 }
                 NonTSPseudoClass::MatchesCssAfter(a) => {

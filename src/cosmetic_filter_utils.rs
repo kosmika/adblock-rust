@@ -9,7 +9,7 @@ use memchr::memchr as find_char;
 /// This should only be called once `selector` has been verified to start with either a "#" or "."
 /// character.
 pub(crate) fn key_from_selector(selector: &str) -> Option<String> {
-    use regex::Regex;
+    use fancy_regex::Regex;
     use std::sync::LazyLock;
 
     static RE_PLAIN_SELECTOR: LazyLock<Regex> =
@@ -20,7 +20,7 @@ pub(crate) fn key_from_selector(selector: &str) -> Option<String> {
         LazyLock::new(|| Regex::new(r"\\([0-9A-Fa-f]+ |.)").unwrap());
 
     // If there are no escape characters in the selector, just take the first class or id token.
-    let mat = RE_PLAIN_SELECTOR.find(selector);
+    let mat = RE_PLAIN_SELECTOR.find(selector).ok().flatten();
     if let Some(location) = mat {
         let key = &location.as_str();
         if find_char(b'\\', key.as_bytes()).is_none() {
@@ -31,13 +31,12 @@ pub(crate) fn key_from_selector(selector: &str) -> Option<String> {
     }
 
     // Otherwise, the characters in the selector must be escaped.
-    let mat = RE_PLAIN_SELECTOR_ESCAPED.find(selector);
+    let mat = RE_PLAIN_SELECTOR_ESCAPED.find(selector).ok().flatten();
     if let Some(location) = mat {
         let mut key = String::with_capacity(selector.len());
         let escaped = &location.as_str();
         let mut beginning = 0;
-        let mat = RE_ESCAPE_SEQUENCE.captures_iter(escaped);
-        for capture in mat {
+        for capture in RE_ESCAPE_SEQUENCE.captures_iter(escaped).filter_map(|c| c.ok()) {
             // Unwrap is safe because the 0th capture group is the match itself
             let location = capture.get(0).unwrap();
             key += &escaped[beginning..location.start()];

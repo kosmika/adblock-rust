@@ -4,7 +4,7 @@
 use crate::resources::{MimeType, Resource, ResourceType};
 use base64::{engine::Engine as _, prelude::BASE64_STANDARD};
 use memchr::memmem;
-use regex::Regex;
+use fancy_regex::Regex;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -84,7 +84,7 @@ fn read_redirectable_resource_mapping(mapfile_data: &str) -> Vec<ResourcePropert
     let mut map: String = mapfile_data
         .lines()
         .skip_while(|line| *line != REDIRECTABLE_RESOURCES_DECLARATION)
-        .take_while(|line| !MAP_END_RE.is_match(line))
+        .take_while(|line| !MAP_END_RE.is_match(line).unwrap_or(false))
         // Strip any trailing comments from each line.
         .map(|line| {
             if let Some(i) = memmem::find(line.as_bytes(), b"//") {
@@ -110,13 +110,13 @@ fn read_redirectable_resource_mapping(mapfile_data: &str) -> Vec<ResourcePropert
 
     // Replace all matches for `,]` or `,}` with `]` or `}`, respectively.
     map = TRAILING_COMMA_RE
-        .replace_all(&map, |caps: &regex::Captures| caps[1].to_string())
+        .replace_all(&map, |caps: &fancy_regex::Captures| caps[1].to_string())
         .to_string();
 
     // Replace all property keys directly preceded by a `{` or a `,` and followed by a `:` with
     // double-quoted versions.
     map = UNQUOTED_FIELD_RE
-        .replace_all(&map, |caps: &regex::Captures| {
+        .replace_all(&map, |caps: &fancy_regex::Captures| {
             format!("{}\"{}\":", &caps[1], &caps[2])
         })
         .to_string();
@@ -174,7 +174,7 @@ fn read_template_resources(scriptlets_data: &str) -> Vec<Resource> {
             continue;
         }
 
-        if NON_EMPTY_LINE_RE.is_match(line) {
+        if NON_EMPTY_LINE_RE.is_match(line).unwrap_or(false) {
             script += line.trim();
             script.push('\n');
             continue;

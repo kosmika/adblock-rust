@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use base64::{engine::Engine as _, prelude::BASE64_STANDARD};
-use regex::Regex;
+use fancy_regex::Regex;
 use std::sync::LazyLock;
 use thiserror::Error;
 
@@ -263,7 +263,11 @@ fn extract_function_name(fn_def: &str) -> Option<&str> {
     static FUNCTION_NAME_RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r#"^function\s+([^\(\)\{\}\s]+)\s*\("#).unwrap());
 
-    FUNCTION_NAME_RE.captures(fn_def).map(|captures| {
+    FUNCTION_NAME_RE
+        .captures(fn_def)
+        .ok()
+        .flatten()
+        .map(|captures| {
         // capture 1 is always present in the above regex if any match was made
         captures.get(1).unwrap().as_str()
     })

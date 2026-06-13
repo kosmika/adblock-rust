@@ -5,7 +5,7 @@ use crate::filters::network::{NetworkFilter, NetworkFilterMask, NetworkFilterMas
 use crate::lists::ParsedFilter;
 
 use memchr::{memchr as find_char, memmem};
-use regex::Regex;
+use fancy_regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 

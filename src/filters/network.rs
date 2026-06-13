@@ -2,7 +2,7 @@
 //! modification.
 
 use memchr::memchr as find_char;
-use regex::Regex;
+use fancy_regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::sync::LazyLock;
@@ -67,7 +67,7 @@ pub enum NetworkFilterError {
     #[error("full regex unsupported")]
     FullRegexUnsupported,
     #[error("regex parsing error")]
-    RegexParsingError(regex::Error),
+    RegexParsingError(String),
     #[error("punycode error")]
     PunycodeError,
     #[error("csp with content type")]
@@ -643,7 +643,7 @@ impl NetworkFilter {
                 // TODO - this could be made more efficient if we could match between two
                 // indices. Once again, we have to do more work than is really needed.
                 static SEPARATOR: LazyLock<Regex> = LazyLock::new(|| Regex::new("[/^*]").unwrap());
-                if let Some(first_separator) = SEPARATOR.find(pattern) {
+                if let Ok(Some(first_separator)) = SEPARATOR.find(pattern) {
                     let first_separator_start = first_separator.start();
                     // NOTE: `first_separator` shall never be -1 here since `IS_REGEX` is true.
                     // This means there must be at least an occurrence of `*` or `^`
@@ -821,7 +821,7 @@ impl NetworkFilter {
         // Make sure the hostname doesn't contain any invalid characters
         static INVALID_CHARS: LazyLock<Regex> =
             LazyLock::new(|| Regex::new("[/^*!?$&(){}\\[\\]+=~`\\s|@,'\"><:;]").unwrap());
-        if INVALID_CHARS.is_match(hostname) {
+        if INVALID_CHARS.is_match(hostname).unwrap_or(false) {
             return Err(NetworkFilterError::FilterParseError);
         }
 
@@ -909,7 +909,7 @@ impl NetworkFilter {
 
         if tokens_buffer.is_empty() && self.mask.contains(NetworkFilterMask::IS_REMOVEPARAM) {
             if let Some(removeparam) = &self.modifier_option {
-                if VALID_PARAM.is_match(removeparam) {
+                if VALID_PARAM.is_match(removeparam).unwrap_or(false) {
                     utils::tokenize_to(&removeparam.to_ascii_lowercase(), tokens_buffer);
                 }
             }

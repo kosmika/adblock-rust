@@ -2,7 +2,7 @@ use memchr::memrchr as find_char_reverse;
 
 use super::network::NetworkFilterError;
 
-use regex::Regex;
+use fancy_regex::Regex;
 use std::sync::LazyLock;
 
 /// For now, only support `$removeparam` with simple alphanumeric/dash/underscore patterns.
@@ -223,7 +223,7 @@ fn parse_filter_options(raw_options: &str) -> Result<Vec<NetworkFilterOption>, N
                 if value.is_empty() {
                     return Err(NetworkFilterError::EmptyRemoveparam);
                 }
-                if !VALID_PARAM.is_match(value) {
+                if !VALID_PARAM.is_match(value).unwrap_or(false) {
                     return Err(NetworkFilterError::RemoveparamRegexUnsupported);
                 }
                 NetworkFilterOption::Removeparam(String::from(value))
