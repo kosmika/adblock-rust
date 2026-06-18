@@ -276,6 +276,72 @@ impl CosmeticFilter {
         })
     }
 
+    fn normalize_abp_inline_style(body: &str) -> String {
+        let trimmed = body.trim().trim_end_matches(';').trim();
+        if trimmed.contains("!important") {
+            format!("{trimmed};")
+        } else {
+            format!("{trimmed} !important;")
+        }
+    }
+
+    fn split_abp_brace_suffix(s: &str) -> Option<(&str, &str)> {
+        if !s.ends_with('}') {
+            return None;
+        }
+        let open = s.rfind('{')?;
+        if open == 0 {
+            return None;
+        }
+        let selector = s[..open].trim_end();
+        let body = s[open + 1..s.len() - 1].trim();
+        if selector.is_empty() {
+            return None;
+        }
+        Some((selector, body))
+    }
+
+    fn parse_abp_remove_body(body: &str) -> Option<bool> {
+        let mut rest = body.trim();
+        if !rest.starts_with("remove") {
+            return None;
+        }
+        rest = rest["remove".len()..].trim_start();
+        if !rest.starts_with(':') {
+            return None;
+        }
+        rest = rest[1..].trim_start();
+        let value = rest.trim_end_matches(|c: char| c == ';' || c.is_ascii_whitespace());
+        Some(value == "true")
+    }
+
+    fn is_display_none_important(body: &str) -> bool {
+        let normalized = body
+            .trim()
+            .trim_end_matches(|c: char| c == ';' || c.is_ascii_whitespace());
+        normalized.eq_ignore_ascii_case("display: none !important")
+    }
+
+    fn parse_abp_style_injection(
+        after_sharp: &str,
+    ) -> Option<Result<(&str, Option<CosmeticFilterAction>), CosmeticFilterError>> {
+        let (selector, body) = match Self::split_abp_brace_suffix(after_sharp) {
+            Some(parts) => parts,
+            None if after_sharp.ends_with('}') => {
+                return Some(Err(CosmeticFilterError::InvalidActionSpecifier));
+            }
+            None => return None,
+        };
+
+        Some(match Self::parse_abp_remove_body(body) {
+            Some(true) => Ok((selector, Some(CosmeticFilterAction::Remove))),
+            Some(false) => Err(CosmeticFilterError::InvalidActionSpecifier),
+            None if Self::is_display_none_important(body) => Ok((selector, None)),
+            None => CosmeticFilterAction::new_style(&Self::normalize_abp_inline_style(body))
+                .map(|action| (selector, Some(action))),
+        })
+    }
+
     /// Parses the contents of a cosmetic filter rule following the `##` or `#@#` separator.
     ///
     /// On success, returns `selector` and `style` according to the rule.
@@ -288,6 +354,10 @@ impl CosmeticFilter {
     ) -> Result<(&str, Option<CosmeticFilterAction>), CosmeticFilterError> {
         if after_sharp.starts_with('^') {
             return Err(CosmeticFilterError::HtmlFilteringUnsupported);
+        }
+
+        if let Some(result) = Self::parse_abp_style_injection(after_sharp) {
+            return result;
         }
 
         const STYLE_TOKEN: &[u8] = b":style(";
