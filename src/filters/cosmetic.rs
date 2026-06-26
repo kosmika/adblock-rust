@@ -276,15 +276,8 @@ impl CosmeticFilter {
         })
     }
 
-    fn normalize_abp_inline_style(body: &str) -> String {
-        let trimmed = body.trim().trim_end_matches(';').trim();
-        if trimmed.contains("!important") {
-            format!("{trimmed};")
-        } else {
-            format!("{trimmed} !important;")
-        }
-    }
-
+    /// Turns a string of the format `.selector { background: red }` into
+    /// `Some((".selector", "background: red"))`.
     fn split_abp_brace_suffix(s: &str) -> Option<(&str, &str)> {
         if !s.ends_with('}') {
             return None;
@@ -301,27 +294,26 @@ impl CosmeticFilter {
         Some((selector, body))
     }
 
+    /// Returns `Some(true)` for ` remove: true; ` with optional whitespace and semicolon,
+    /// `Some(false)` for the corresponding false construction, or `None` otherwise.
     fn parse_abp_remove_body(body: &str) -> Option<bool> {
-        let mut rest = body.trim();
-        if !rest.starts_with("remove") {
+        let (key, mut val) = body.split_once(":")?;
+        if key.trim() != "remove" {
             return None;
         }
-        rest = rest["remove".len()..].trim_start();
-        if !rest.starts_with(':') {
-            return None;
+        val = val.trim();
+        if let Some(stripped_val) = val.strip_suffix(';') {
+            val = stripped_val;
         }
-        rest = rest[1..].trim_start();
-        let value = rest.trim_end_matches(|c: char| c == ';' || c.is_ascii_whitespace());
-        Some(value == "true")
+        match val {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
     }
 
-    fn is_display_none_important(body: &str) -> bool {
-        let normalized = body
-            .trim()
-            .trim_end_matches(|c: char| c == ';' || c.is_ascii_whitespace());
-        normalized.eq_ignore_ascii_case("display: none !important")
-    }
-
+    /// Parses ABP curly-bracketed style injections and `remove:` directives into corresponding
+    /// `CosmeticFilterAction`s.
     fn parse_abp_style_injection(
         after_sharp: &str,
     ) -> Option<Result<(&str, Option<CosmeticFilterAction>), CosmeticFilterError>> {
@@ -336,9 +328,7 @@ impl CosmeticFilter {
         Some(match Self::parse_abp_remove_body(body) {
             Some(true) => Ok((selector, Some(CosmeticFilterAction::Remove))),
             Some(false) => Err(CosmeticFilterError::InvalidActionSpecifier),
-            None if Self::is_display_none_important(body) => Ok((selector, None)),
-            None => CosmeticFilterAction::new_style(&Self::normalize_abp_inline_style(body))
-                .map(|action| (selector, Some(action))),
+            None => CosmeticFilterAction::new_style(body).map(|action| (selector, Some(action))),
         })
     }
 

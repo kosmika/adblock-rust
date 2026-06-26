@@ -858,6 +858,52 @@ mod parse_tests {
     }
 
     #[test]
+    fn abp_style_helpers() {
+        {
+            let input = ".selector { background: red }";
+            let output = CosmeticFilter::split_abp_brace_suffix(input);
+            assert_eq!(output, Some((".selector", "background: red")));
+        }
+        {
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("  remove:  true;  "),
+                Some(true)
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body(" remove: true "),
+                Some(true)
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("remove:true;"),
+                Some(true)
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("  remove:  false;  "),
+                Some(false)
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body(" remove: false "),
+                Some(false)
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("remove:false;"),
+                Some(false)
+            );
+
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("remove:true; background: red;"),
+                None
+            );
+            assert_eq!(
+                CosmeticFilter::parse_abp_remove_body("remove:true; remove: true;"),
+                None
+            );
+            assert_eq!(CosmeticFilter::parse_abp_remove_body("remove:true;;"), None);
+            assert_eq!(CosmeticFilter::parse_abp_remove_body("remove::true"), None);
+        }
+    }
+
+    #[test]
     fn abp_style_injection() {
         check_parse_result(
             "example.com###remove-id {remove: true;}",
@@ -894,17 +940,17 @@ mod parse_tests {
                 hostnames: sort_hash_domains(vec!["example.com"]),
                 selector: SelectorType::PlainCss("#inline-css-id".to_string()),
                 action: Some(CosmeticFilterAction::Style(
-                    "background-color: #0dc74b !important;".into(),
+                    "background-color: #0dc74b;".into(),
                 )),
                 ..Default::default()
             },
         );
         check_parse_result(
-            "example.com##.ad {display: none !important;}",
+            "example.com##.ad {display: none;}",
             CosmeticFilterBreakdown {
                 hostnames: sort_hash_domains(vec!["example.com"]),
                 selector: SelectorType::PlainCss(".ad".to_string()),
-                action: None,
+                action: Some(CosmeticFilterAction::Style("display: none;".into())),
                 ..Default::default()
             },
         );
@@ -932,7 +978,7 @@ mod parse_tests {
         assert_eq!(
             rule.action,
             Some(CosmeticFilterAction::Style(
-                "background-color: #0dc74b !important;".into()
+                "background-color: #0dc74b;".into()
             ))
         );
         assert_eq!(rule.plain_css_selector(), Some("#span-inline-css"));
@@ -944,7 +990,7 @@ mod parse_tests {
         assert_eq!(
             rule.action,
             Some(CosmeticFilterAction::Style(
-                "background-color: #0dc74b !important;".into()
+                "background-color: #0dc74b;".into()
             ))
         );
         assert_eq!(
